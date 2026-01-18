@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Development files
+.git
+.gitignore
+*.md
+!README.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Environment files (use Railway env vars)
+.env
+.env.*
+!.env.example
+
+# Test files
+*.test.ts
+*.test.tsx
+__tests__
+coverage
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test PDFs
+test-*.pdf
+
+# Temporary files
+tmp
+temp
+uploads
