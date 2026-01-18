@@ -4,12 +4,15 @@ import { db, schema } from "../../db.js";
 import { eq, desc, and, sql, asc } from "drizzle-orm";
 import { susanAI } from "../../services/susan-ai.js";
 import multer from "multer";
-// @ts-ignore - pdf-parse types issue
-import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
 import * as XLSX from "xlsx";
 import path from "path";
 import fs from "fs";
+import { createRequire } from "module";
+
+// Use createRequire for CommonJS modules that don't support ESM
+const require = createRequire(import.meta.url);
+const pdfParse = require("pdf-parse");
 import crypto from "crypto";
 import { generateDamageAssessmentPDF, generateInspectionReportPDF } from "../../utils/pdf-generator.js";
 
