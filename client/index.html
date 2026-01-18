@@ -3,14 +3,42 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#1e40af" />
+
+    <!-- Viewport for mobile responsiveness -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+    <!-- Theme colors -->
+    <meta name="theme-color" content="#b91c1c" />
+    <meta name="msapplication-TileColor" content="#b91c1c" />
+
+    <!-- SEO Meta Tags -->
     <meta name="description" content="Roof ER Command Center - Unified platform for HR, Sales, Training, and Field Operations" />
+    <meta name="keywords" content="roofing, HR, sales, training, field operations, command center" />
+
     <title>Roof ER Command Center</title>
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
-    <!-- Apple Touch Icon -->
+
+    <!-- Apple iOS Specific Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Roof ER" />
+
+    <!-- Apple Touch Icons -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167x167.png" />
+
+    <!-- Apple Splash Screens (optional - can be added later) -->
+    <link rel="apple-touch-startup-image" href="/splash-screen.png" />
+
+    <!-- Disable automatic iOS phone number detection -->
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Microsoft Tile -->
+    <meta name="msapplication-config" content="/browserconfig.xml" />
   </head>
   <body>
     <div id="root"></div>

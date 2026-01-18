@@ -1,58 +1,22 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
+import { LeaderboardSocketHandler } from "./leaderboard";
+import { TrainingSocketHandler } from "./training";
 
 // Track connected clients by user ID and module
 const connectedClients = new Map<number, Set<string>>();
 
+// Handlers will be initialized in setupWebSocket
+let leaderboardHandler: LeaderboardSocketHandler;
+let trainingHandler: TrainingSocketHandler;
+
 export function setupWebSocket(io: SocketIOServer) {
   // Namespace for leaderboard real-time updates
   const leaderboardNs = io.of("/leaderboard");
-  leaderboardNs.on("connection", (socket: Socket) => {
-    console.log("Client connected to leaderboard namespace:", socket.id);
-
-    // Join room for TV display updates
-    socket.on("join:tv-display", () => {
-      socket.join("tv-display");
-      console.log(`${socket.id} joined tv-display room`);
-    });
-
-    // Join room for personal updates
-    socket.on("join:user", (userId: number) => {
-      socket.join(`user:${userId}`);
-      console.log(`${socket.id} joined user:${userId} room`);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Client disconnected from leaderboard:", socket.id);
-    });
-  });
+  leaderboardHandler = new LeaderboardSocketHandler(leaderboardNs);
 
   // Namespace for training real-time features
   const trainingNs = io.of("/training");
-  trainingNs.on("connection", (socket: Socket) => {
-    console.log("Client connected to training namespace:", socket.id);
-
-    socket.on("join:session", (sessionId: string) => {
-      socket.join(`session:${sessionId}`);
-      console.log(`${socket.id} joined training session:${sessionId}`);
-    });
-
-    socket.on("roleplay:message", async (data: { sessionId: string; message: string }) => {
-      // Emit typing indicator
-      socket.to(`session:${data.sessionId}`).emit("roleplay:typing", true);
-
-      // TODO: Process AI response and emit back
-      setTimeout(() => {
-        socket.emit("roleplay:response", {
-          sessionId: data.sessionId,
-          message: "AI response placeholder",
-        });
-      }, 1000);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Client disconnected from training:", socket.id);
-    });
-  });
+  trainingHandler = new TrainingSocketHandler(trainingNs);
 
   // Namespace for field module (chat)
   const fieldNs = io.of("/field");

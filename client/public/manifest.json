@@ -3,6 +3,7 @@
   "short_name": "Roof ER",
   "description": "Unified platform for HR, Sales, Training, and Field Operations",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#b91c1c",
   "theme_color": "#b91c1c",
@@ -11,13 +12,18 @@
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
-  "categories": ["business", "productivity"]
+  "categories": ["business", "productivity"],
+  "prefer_related_applications": false,
+  "lang": "en-US",
+  "dir": "ltr"
 }
