@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,9 +14,11 @@ import {
   Calendar,
   ChevronRight,
   History,
-  Trophy
+  Trophy,
+  Loader2
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 
 interface QuickAction {
   id: string;
@@ -29,31 +31,39 @@ interface QuickAction {
   borderColor: string;
 }
 
+interface TrainingStats {
+  totalSessions: number;
+  avgScore: number;
+  currentStreak: number;
+  totalXP: number;
+  currentLevel: number;
+  weeklyGoalProgress: number;
+  achievements: number;
+}
+
 export function TrainingDashboard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState({
-    totalSessions: 0,
-    avgScore: 0,
-    currentStreak: 0,
-    totalXP: 0,
-    currentLevel: 1,
-    weeklyGoalProgress: 0,
-    achievements: 0
+
+  // Fetch training stats from API
+  const { data: statsData, isLoading, error } = useQuery({
+    queryKey: ['training', 'dashboard', user?.id],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/training/dashboard');
+      return response.data;
+    },
+    enabled: !!user?.id,
   });
 
-  // TODO: Replace with actual API call to /api/training/stats
-  useEffect(() => {
-    // Mock data for now - will be replaced with API call
-    setStats({
-      totalSessions: 12,
-      avgScore: 85,
-      currentStreak: 7,
-      totalXP: 1250,
-      currentLevel: 5,
-      weeklyGoalProgress: 80,
-      achievements: 15
-    });
-  }, [user?.id]);
+  // Map API response to expected stats format
+  const stats: TrainingStats = {
+    totalSessions: statsData?.totalSessions || 0,
+    avgScore: statsData?.avgScore || 0,
+    currentStreak: statsData?.currentStreak || 0,
+    totalXP: statsData?.totalXp || 0,
+    currentLevel: typeof statsData?.level === 'number' ? statsData.level : 1,
+    weeklyGoalProgress: Math.min(100, Math.round(((statsData?.completedModules || 0) / 5) * 100)), // 5 modules = 100%
+    achievements: statsData?.achievements || 0,
+  };
 
   const quickActions: QuickAction[] = [
     {
@@ -105,13 +115,37 @@ export function TrainingDashboard() {
     return 'Good evening';
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-red-500" />
+          <p className="text-muted-foreground">Loading your training data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <p className="text-red-500 mb-2">Failed to load training data</p>
+          <p className="text-muted-foreground text-sm">{(error as Error).message}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 max-w-4xl mx-auto p-6">
       {/* Welcome Header */}
       <div className="space-y-3">
         <p className="text-muted-foreground text-sm">{getGreeting()}</p>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-          Welcome back, <span className="text-red-500">{user?.name || 'there'}</span>!
+          Welcome back, <span className="text-red-500">{user?.firstName || 'there'}</span>!
         </h1>
       </div>
 
@@ -133,8 +167,12 @@ export function TrainingDashboard() {
             <TrendingUp className="w-5 h-5 text-green-400" />
             <span className="text-xs text-green-300 uppercase tracking-wider">Avg Score</span>
           </div>
-          <div className="text-3xl font-bold text-green-400">{stats.avgScore}%</div>
-          <div className="text-xs text-muted-foreground">all time</div>
+          <div className="text-3xl font-bold text-green-400">
+            {stats.avgScore > 0 ? `${stats.avgScore}%` : '-'}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {stats.totalSessions > 0 ? 'roleplay sessions' : 'no sessions yet'}
+          </div>
         </Card>
 
         {/* Level */}

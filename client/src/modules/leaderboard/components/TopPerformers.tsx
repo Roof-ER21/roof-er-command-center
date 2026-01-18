@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import type { SalesRep } from "@/shared/schema";
+import type { SalesRep } from "@shared/schema";
 
 interface RankChange {
   id: number;
@@ -17,6 +17,7 @@ interface TopPerformersProps {
   rankChanges?: RankChange[];
   showRankAnimation?: boolean;
   sortBy?: string;
+  onPerformerClick?: (performer: SalesRep) => void;
 }
 
 const formatCurrency = (value: string | number): string => {
@@ -46,7 +47,8 @@ export function TopPerformers({
   performers,
   rankChanges = [],
   showRankAnimation = false,
-  sortBy = "monthlySignups"
+  sortBy = "monthlySignups",
+  onPerformerClick
 }: TopPerformersProps) {
   // Helper function to get display info based on sort type
   const getMetricDisplay = (sortBy: string, performer: SalesRep) => {
@@ -129,13 +131,14 @@ export function TopPerformers({
           return (
             <Card
               key={performer.id}
+              onClick={() => onPerformerClick?.(performer)}
               className={`relative transition-all duration-500 ${
                 hasRankChange
                   ? 'animate-pulse border-primary/50'
                   : isFirst
                   ? 'border-primary/30'
                   : 'hover:border-primary/50'
-              }`}
+              } ${onPerformerClick ? 'cursor-pointer' : ''}`}
             >
               <div className={`absolute -top-3 -right-3 w-12 h-12 bg-gradient-to-br ${getRankColor(rank)} rounded-full flex items-center justify-center shadow-lg ${
                 hasRankChange ? 'animate-bounce' : ''

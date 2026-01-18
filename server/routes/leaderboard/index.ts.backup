@@ -1,0 +1,556 @@
+import { Router, Request, Response } from "express";
+import { requireAuth, requireModuleAccess } from "../../middleware/auth.js";
+import { db } from "../../db.js";
+import {
+  salesReps,
+  teams,
+  territories,
+  contests,
+  contestParticipants,
+  leaderboardSnapshots,
+  badges,
+  playerProfiles,
+  playerBadges,
+  users
+} from "../../../shared/schema.js";
+import { eq, desc, sql, asc, and, gte } from "drizzle-orm";
+
+const router = Router();
+
+// Apply auth and module access middleware
+router.use(requireAuth);
+router.use(requireModuleAccess('leaderboard'));
+
+// Get leaderboard stats
+router.get("/stats", async (req: Request, res: Response) => {
+  try {
+    const [totalReps] = await db.select({ count: sql<number>`count(*)` }).from(salesReps);
+    const [activeContests] = await db.select({ count: sql<number>`count(*)` })
+      .from(contests)
+      .where(eq(contests.status, 'active'));
+
+    const allReps = await db.select({
+      monthlyRevenue: salesReps.monthlyRevenue,
+      yearlyRevenue: salesReps.yearlyRevenue,
+    }).from(salesReps);
+
+    const totalMonthlyRevenue = allReps.reduce((sum, r) => sum + Number(r.monthlyRevenue || 0), 0);
+    const totalYearlyRevenue = allReps.reduce((sum, r) => sum + Number(r.yearlyRevenue || 0), 0);
+
+    res.json({
+      totalReps: Number(totalReps?.count || 0),
+      activeContests: Number(activeContests?.count || 0),
+      totalMonthlyRevenue,
+      totalYearlyRevenue,
+      averageMonthlyRevenue: allReps.length ? totalMonthlyRevenue / allReps.length : 0,
+    });
+  } catch (error) {
+    console.error("Leaderboard stats error:", error);
+    res.json({
+      totalReps: 0,
+      activeContests: 0,
+      totalMonthlyRevenue: 0,
+      totalYearlyRevenue: 0,
+      averageMonthlyRevenue: 0,
+    });
+  }
+});
+
+// Get sales reps (leaderboard) - supports /api/leaderboard/sales-reps and /api/sales-reps
+router.get("/sales-reps", async (req: Request, res: Response) => {
+  try {
+    const reps = await db.select()
+      .from(salesReps)
+      .where(eq(salesReps.isActive, true))
+      .orderBy(desc(salesReps.monthlyRevenue));
+
+    // Add rank to each rep
+    const rankedReps = reps.map((rep, index) => ({
+      ...rep,
+      rank: index + 1,
+      monthlyRevenue: Number(rep.monthlyRevenue),
+      yearlyRevenue: Number(rep.yearlyRevenue),
+      allTimeRevenue: Number(rep.allTimeRevenue),
+      monthlySignups: Number(rep.monthlySignups),
+      yearlySignups: Number(rep.yearlySignups),
+      goalProgress: Number(rep.goalProgress),
+      monthlyGrowth: Number(rep.monthlyGrowth),
+    }));
+
+    res.json(rankedReps);
+  } catch (error) {
+    console.error("Sales reps fetch error:", error);
+    res.json([]);
+  }
+});
+
+// Get teams
+router.get("/teams", async (req: Request, res: Response) => {
+  try {
+    const allTeams = await db.select().from(teams).where(eq(teams.isActive, true));
+    res.json(allTeams);
+  } catch (error) {
+    console.error("Teams fetch error:", error);
+    res.json([]);
+  }
+});
+
+// Get territories
+router.get("/territories", async (req: Request, res: Response) => {
+  try {
+    const allTerritories = await db.select().from(territories).where(eq(territories.isActive, true));
+    res.json(allTerritories);
+  } catch (error) {
+    console.error("Territories fetch error:", error);
+    res.json([]);
+  }
+});
+
+// Get leaderboard
+router.get("/", async (req: Request, res: Response) => {
+  try {
+    const reps = await db.select()
+      .from(salesReps)
+      .where(eq(salesReps.isActive, true))
+      .orderBy(desc(salesReps.monthlyRevenue));
+
+    res.json({
+      success: true,
+      data: {
+        rankings: reps.map((rep, index) => ({
+          rank: index + 1,
+          name: rep.name,
+          sales: Number(rep.monthlyRevenue),
+          team: rep.team,
+        })),
+        lastUpdated: new Date().toISOString(),
+      }
+    });
+  } catch (error) {
+    console.error("Leaderboard error:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch leaderboard" });
+  }
+});
+
+// Get contests
+router.get("/contests", async (req: Request, res: Response) => {
+  try {
+    const allContests = await db.select().from(contests).orderBy(desc(contests.startDate));
+    res.json(allContests);
+  } catch (error) {
+    console.error("Contests fetch error:", error);
+    res.json([]);
+  }
+});
+
+// Get active contests
+router.get("/contests/active", async (req: Request, res: Response) => {
+  try {
+    const activeContests = await db.select()
+      .from(contests)
+      .where(eq(contests.status, 'active'))
+      .orderBy(desc(contests.startDate));
+    res.json(activeContests);
+  } catch (error) {
+    console.error("Active contests fetch error:", error);
+    res.json([]);
+  }
+});
+
+// Get contest leaderboard (participants with scores)
+router.get("/contests/:id/leaderboard", async (req: Request, res: Response) => {
+  try {
+    const contestId = parseInt(req.params.id);
+
+    // Get contest participants with sales rep details
+    const participants = await db
+      .select({
+        id: contestParticipants.id,
+        contestId: contestParticipants.contestId,
+        salesRepId: contestParticipants.salesRepId,
+        score: contestParticipants.score,
+        rank: contestParticipants.rank,
+        joinedAt: contestParticipants.joinedAt,
+        name: salesReps.name,
+        avatar: salesReps.avatar,
+        team: salesReps.team,
+      })
+      .from(contestParticipants)
+      .innerJoin(salesReps, eq(contestParticipants.salesRepId, salesReps.id))
+      .where(eq(contestParticipants.contestId, contestId))
+      .orderBy(desc(contestParticipants.score));
+
+    // Add rank if not set
+    const rankedParticipants = participants.map((p, index) => ({
+      ...p,
+      rank: p.rank || (index + 1),
+      score: Number(p.score),
+    }));
+
+    res.json(rankedParticipants);
+  } catch (error) {
+    console.error("Contest leaderboard fetch error:", error);
+    res.json([]);
+  }
+});
+
+// Create contest
+router.post("/contests", async (req: Request, res: Response) => {
+  try {
+    const data = req.body;
+    const [newContest] = await db.insert(contests).values({
+      ...data,
+      startDate: new Date(data.startDate),
+      endDate: new Date(data.endDate),
+    }).returning();
+    res.status(201).json(newContest);
+  } catch (error) {
+    console.error("Create contest error:", error);
+    res.status(500).json({ error: "Failed to create contest" });
+  }
+});
+
+// Update contest
+router.patch("/contests/:id", async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const data = req.body;
+    if (data.startDate) data.startDate = new Date(data.startDate);
+    if (data.endDate) data.endDate = new Date(data.endDate);
+
+    const [updated] = await db.update(contests)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(contests.id, id))
+      .returning();
+    res.json(updated);
+  } catch (error) {
+    console.error("Update contest error:", error);
+    res.status(500).json({ error: "Failed to update contest" });
+  }
+});
+
+// Calculate and finalize contest payout
+router.post("/contests/:id/payout", async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [contest] = await db.select().from(contests).where(eq(contests.id, id)).limit(1);
+    
+    if (!contest) return res.status(404).json({ error: "Contest not found" });
+    
+    const participants = await db.select().from(contestParticipants).where(eq(contestParticipants.contestId, id));
+    if (participants.length === 0) return res.status(400).json({ error: "No participants in this contest" });
+
+    // Find winner
+    participants.sort((a, b) => Number(b.score) - Number(a.score));
+    const winner = participants[0];
+
+    const [updated] = await db.update(contests)
+      .set({ 
+        status: 'completed', 
+        winnerId: winner.salesRepId,
+        updatedAt: new Date() 
+      })
+      .where(eq(contests.id, id))
+      .returning();
+
+    res.json({ success: true, contest: updated, winnerId: winner.salesRepId });
+  } catch (error) {
+    console.error("Contest payout error:", error);
+    res.status(500).json({ error: "Failed to process payout" });
+  }
+});
+
+// Get user's sales stats
+router.get("/my-stats", async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).session?.userId;
+    // Find sales rep linked to user
+    const [rep] = await db.select()
+      .from(salesReps)
+      .where(eq(salesReps.userId, userId));
+
+    if (rep) {
+      res.json({
+        success: true,
+        data: {
+          rank: 1,
+          totalSales: Number(rep.allTimeRevenue),
+          monthSales: Number(rep.monthlyRevenue),
+          weekSales: 0,
+          bonusTier: rep.currentBonusTier,
+          xp: 0,
+        }
+      });
+    } else {
+      res.json({
+        success: true,
+        data: { rank: 0, totalSales: 0, monthSales: 0, weekSales: 0, bonusTier: 0, xp: 0 }
+      });
+    }
+  } catch (error) {
+    console.error("Stats error:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch stats" });
+  }
+});
+
+// TV Display data
+router.get("/tv-display", async (req: Request, res: Response) => {
+  try {
+    const reps = await db.select()
+      .from(salesReps)
+      .where(eq(salesReps.isActive, true))
+      .orderBy(desc(salesReps.monthlyRevenue))
+      .limit(10);
+
+    res.json({
+      success: true,
+      data: {
+        rankings: reps.map((rep, index) => ({
+          rank: index + 1,
+          name: rep.name,
+          sales: Number(rep.monthlyRevenue),
+          avatar: rep.avatar,
+          team: rep.team,
+        })),
+        lastUpdated: new Date().toISOString(),
+      }
+    });
+  } catch (error) {
+    console.error("TV display error:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch TV display data" });
+  }
+});
+
+// Create player profile
+router.post("/player-profiles", async (req: Request, res: Response) => {
+  try {
+    const { salesRepId } = req.body;
+
+    if (!salesRepId) {
+      return res.status(400).json({ error: "salesRepId is required" });
+    }
+
+    // Check if sales rep exists
+    const [salesRep] = await db.select()
+      .from(salesReps)
+      .where(eq(salesReps.id, salesRepId))
+      .limit(1);
+
+    if (!salesRep) {
+      return res.status(404).json({ error: "Sales rep not found" });
+    }
+
+    // Check if profile already exists
+    const [existing] = await db.select()
+      .from(playerProfiles)
+      .where(eq(playerProfiles.salesRepId, salesRepId))
+      .limit(1);
+
+    if (existing) {
+      return res.status(409).json({
+        error: "Player profile already exists for this sales rep",
+        profile: existing
+      });
+    }
+
+    // Create new player profile with defaults
+    const [newProfile] = await db.insert(playerProfiles)
+      .values({
+        salesRepId,
+        playerLevel: 1,
+        totalCareerPoints: 0,
+        seasonPoints: 0,
+        monthlyPoints: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        lastActivityDate: new Date().toISOString().split('T')[0],
+      })
+      .returning();
+
+    res.status(201).json(newProfile);
+  } catch (error) {
+    console.error("Create player profile error:", error);
+    res.status(500).json({ error: "Failed to create player profile" });
+  }
+});
+
+// Get player profile by sales rep ID
+router.get("/player-profiles/:salesRepId", async (req: Request, res: Response) => {
+  try {
+    const salesRepId = parseInt(req.params.salesRepId);
+
+    const [profile] = await db.select()
+      .from(playerProfiles)
+      .where(eq(playerProfiles.salesRepId, salesRepId))
+      .limit(1);
+
+    if (!profile) {
+      return res.status(404).json({ error: "Player profile not found" });
+    }
+
+    res.json(profile);
+  } catch (error) {
+    console.error("Get player profile error:", error);
+    res.status(500).json({ error: "Failed to fetch player profile" });
+  }
+});
+
+// Get full profile for a sales rep (history, badges, comparison)
+router.get("/sales-reps/:id/full-profile", async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { days = '30' } = req.query;
+    const numDays = Math.min(Math.max(parseInt(days as string) || 30, 7), 90);
+
+    // Get sales rep data
+    const [salesRep] = await db.select()
+      .from(salesReps)
+      .where(eq(salesReps.id, id))
+      .limit(1);
+
+    if (!salesRep) {
+      return res.status(404).json({ error: "Sales rep not found" });
+    }
+
+    // Get linked user if exists
+    let linkedUser = null;
+    if (salesRep.userId) {
+      const [user] = await db.select()
+        .from(users)
+        .where(eq(users.id, salesRep.userId))
+        .limit(1);
+      linkedUser = user || null;
+    }
+
+    // Get player profile for gamification data
+    const [playerProfile] = await db
+      .select()
+      .from(playerProfiles)
+      .where(eq(playerProfiles.salesRepId, id));
+
+    // Get leaderboard history (last N days)
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - numDays);
+    const startDateStr = startDate.toISOString().split('T')[0];
+
+    const history = await db
+      .select({
+        id: leaderboardSnapshots.id,
+        snapshotDate: leaderboardSnapshots.snapshotDate,
+        rank: leaderboardSnapshots.rank,
+        points: leaderboardSnapshots.points,
+        monthlySignups: leaderboardSnapshots.monthlySignups,
+        seasonId: leaderboardSnapshots.seasonId,
+      })
+      .from(leaderboardSnapshots)
+      .where(
+        and(
+          eq(leaderboardSnapshots.salesRepId, id),
+          gte(leaderboardSnapshots.snapshotDate, startDateStr)
+        )
+      )
+      .orderBy(desc(leaderboardSnapshots.snapshotDate));
+
+    // Get earned badges
+    let earnedBadges: any[] = [];
+    if (playerProfile) {
+      earnedBadges = await db
+        .select({
+          id: badges.id,
+          name: badges.name,
+          description: badges.description,
+          iconUrl: badges.iconUrl,
+          category: badges.category,
+          rarity: badges.rarity,
+          earnedAt: playerBadges.earnedAt,
+        })
+        .from(playerBadges)
+        .innerJoin(badges, eq(playerBadges.badgeId, badges.id))
+        .where(eq(playerBadges.playerId, playerProfile.id))
+        .orderBy(desc(playerBadges.earnedAt));
+    }
+
+    // Get all active reps for comparison
+    const allReps = await db.select()
+      .from(salesReps)
+      .where(eq(salesReps.isActive, true));
+
+    // Calculate current rank
+    const sortedBySignups = [...allReps].sort(
+      (a, b) => parseFloat(b.monthlySignups) - parseFloat(a.monthlySignups)
+    );
+    const currentRank = sortedBySignups.findIndex(r => r.id === id) + 1;
+
+    // Team stats
+    const teamReps = salesRep.team ? allReps.filter(r => r.team === salesRep.team) : [];
+    const teamAvg = teamReps.length > 0 ? {
+      signups: teamReps.reduce((sum, r) => sum + parseFloat(r.monthlySignups), 0) / teamReps.length,
+      revenue: teamReps.reduce((sum, r) => sum + parseFloat(r.yearlyRevenue), 0) / teamReps.length,
+    } : { signups: 0, revenue: 0 };
+
+    // Top performer
+    const topPerformer = sortedBySignups[0];
+
+    // Calculate percentile
+    const percentile = Math.round(((allReps.length - currentRank + 1) / allReps.length) * 100);
+
+    // Calculate rank change from history
+    let rankChange = 0;
+    if (history.length >= 2) {
+      const oldest = history[history.length - 1];
+      const newest = history[0];
+      rankChange = oldest.rank - newest.rank; // Positive = improved
+    }
+
+    res.json({
+      rep: {
+        ...salesRep,
+        monthlyRevenue: Number(salesRep.monthlyRevenue),
+        yearlyRevenue: Number(salesRep.yearlyRevenue),
+        allTimeRevenue: Number(salesRep.allTimeRevenue),
+        monthlySignups: salesRep.monthlySignups,
+        yearlySignups: salesRep.yearlySignups,
+        monthlySignupGoal: Number(salesRep.monthlySignupGoal),
+        yearlyRevenueGoal: salesRep.yearlyRevenueGoal,
+        goalProgress: salesRep.goalProgress,
+        currentRank,
+        totalPlayers: allReps.length,
+      },
+      user: linkedUser ? {
+        id: linkedUser.id,
+        username: linkedUser.username,
+        role: linkedUser.role,
+        displayName: linkedUser.firstName && linkedUser.lastName
+          ? `${linkedUser.firstName} ${linkedUser.lastName}`
+          : null,
+        lastLoginAt: linkedUser.lastLoginAt,
+        email: linkedUser.email,
+      } : null,
+      playerProfile: playerProfile ? {
+        playerLevel: playerProfile.playerLevel,
+        totalCareerPoints: playerProfile.totalCareerPoints,
+        seasonPoints: playerProfile.seasonPoints,
+        monthlyPoints: playerProfile.monthlyPoints,
+        currentStreak: playerProfile.currentStreak,
+        longestStreak: playerProfile.longestStreak,
+      } : null,
+      history,
+      badges: earnedBadges,
+      comparison: {
+        teamAvg,
+        topPerformer: topPerformer ? {
+          name: topPerformer.name,
+          signups: parseFloat(topPerformer.monthlySignups),
+          revenue: parseFloat(topPerformer.yearlyRevenue),
+        } : null,
+        percentile,
+        rankChange,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching full profile:', error);
+    res.status(500).json({ error: "Failed to fetch full profile" });
+  }
+});
+
+export default router;

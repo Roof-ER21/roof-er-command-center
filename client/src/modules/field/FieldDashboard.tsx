@@ -7,8 +7,8 @@ export function FieldDashboard() {
   const cards = [
     { title: "Chat with Susan", description: "AI assistant", icon: MessageCircle, href: "/field/chat" },
     { title: "Email Generator", description: "Professional emails", icon: Mail, href: "/field/email" },
-    { title: "Documents", description: "Analyze & search", icon: FileText, href: "/field/documents" },
-    { title: "Image Analysis", description: "Damage assessment", icon: Image, href: "/field/images" },
+    { title: "Document Analysis", description: "AI-powered doc insights", icon: FileText, href: "/field/document-analysis" },
+    { title: "Image Analysis", description: "Roof damage assessment", icon: Image, href: "/field/images" },
   ];
 
   return (

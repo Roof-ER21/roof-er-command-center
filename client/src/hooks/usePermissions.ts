@@ -4,11 +4,17 @@ export function usePermissions() {
   const { user } = useAuth();
 
   const isAdmin = () => {
-    return user?.role === 'admin';
+    const role = user?.role?.toString().toUpperCase();
+    return role === 'ADMIN' ||
+      role === 'SYSTEM_ADMIN' ||
+      role === 'HR_ADMIN' ||
+      role === 'GENERAL_MANAGER' ||
+      role === 'TERRITORY_MANAGER';
   };
 
   const isManager = () => {
-    return user?.role === 'admin' || user?.role === 'manager';
+    const role = user?.role?.toString().toUpperCase();
+    return isAdmin() || role === 'MANAGER' || role === 'TEAM_LEAD';
   };
 
   const canViewResource = (resource: string) => {
@@ -16,10 +22,10 @@ export function usePermissions() {
     if (!user) return false;
 
     // Admins can view everything
-    if (user.role === 'admin') return true;
+    if (isAdmin()) return true;
 
     // Managers can view most resources except admin-only ones
-    if (user.role === 'manager') {
+    if (isManager()) {
       const adminOnly = ['system-settings', 'user-management'];
       return !adminOnly.includes(resource);
     }

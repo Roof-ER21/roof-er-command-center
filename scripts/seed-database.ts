@@ -578,7 +578,345 @@ async function seedDatabase() {
     }
 
     // ============================================================================
-    // 6. CREATE CONTESTS
+    // 6. CREATE TRAINING MODULES
+    // ============================================================================
+    console.log('\n📚 Creating training modules...');
+
+    const trainingModulesData = [
+      {
+        title: 'Introduction to Roofing Sales',
+        description: 'Learn the fundamentals of roofing sales including product knowledge and customer communication',
+        type: 'video' as const,
+        content: {
+          videoUrl: 'https://example.com/intro-video',
+          transcript: 'Welcome to roofing sales training...',
+          keyPoints: ['Understanding roofing materials', 'Customer needs assessment', 'Basic pricing'],
+        },
+        order: 1,
+        xpReward: 100,
+        estimatedMinutes: 30,
+        difficulty: 'beginner' as const,
+        isActive: true,
+      },
+      {
+        title: 'Insurance Claims Process',
+        description: 'Master the insurance claims process for roofing jobs',
+        type: 'interactive' as const,
+        content: {
+          steps: ['Initial inspection', 'Documentation', 'Filing the claim', 'Follow-up'],
+          quizQuestions: [],
+        },
+        order: 2,
+        xpReward: 150,
+        estimatedMinutes: 45,
+        difficulty: 'intermediate' as const,
+        prerequisiteModuleId: 1,
+        isActive: true,
+      },
+      {
+        title: 'Advanced Objection Handling',
+        description: 'Learn proven techniques for handling customer objections',
+        type: 'roleplay' as const,
+        content: {
+          scenarios: ['Price objections', 'Timing concerns', 'Competitor comparisons'],
+          techniques: ['Feel-Felt-Found', 'Reframing', 'Value proposition'],
+        },
+        order: 3,
+        xpReward: 200,
+        estimatedMinutes: 60,
+        difficulty: 'advanced' as const,
+        prerequisiteModuleId: 2,
+        isActive: true,
+      },
+      {
+        title: 'Product Knowledge: Shingle Types',
+        description: 'Comprehensive guide to roofing shingle types and their benefits',
+        type: 'reading' as const,
+        content: {
+          sections: ['Asphalt Shingles', 'Metal Roofing', 'Tile Roofing', 'Slate Roofing'],
+          resources: ['Product catalogs', 'Comparison charts'],
+        },
+        order: 4,
+        xpReward: 75,
+        estimatedMinutes: 20,
+        difficulty: 'beginner' as const,
+        isActive: true,
+      },
+      {
+        title: 'Closing Techniques Masterclass',
+        description: 'Advanced closing strategies for maximum conversion',
+        type: 'quiz' as const,
+        content: {
+          questions: [
+            { question: 'What is the assumptive close?', options: ['A', 'B', 'C'], correctAnswer: 0 },
+            { question: 'When should you use urgency?', options: ['A', 'B', 'C'], correctAnswer: 1 },
+          ],
+        },
+        order: 5,
+        xpReward: 250,
+        estimatedMinutes: 40,
+        difficulty: 'expert' as const,
+        prerequisiteModuleId: 3,
+        isActive: true,
+      },
+    ];
+
+    const insertedModules = await db
+      .insert(schema.trainingModules)
+      .values(trainingModulesData)
+      .onConflictDoNothing()
+      .returning();
+
+    console.log(`✅ Created ${insertedModules.length} training modules`);
+
+    // Create training progress for some users
+    if (insertedModules.length > 0 && allUsers.length > 0) {
+      const traineesOnly = allUsers.filter(u => u.role === 'TRAINEE' || u.role === 'SALES_REP');
+      const progressData = [];
+
+      for (const user of traineesOnly) {
+        // First module completed
+        progressData.push({
+          userId: user.id,
+          moduleId: insertedModules[0].id,
+          status: 'completed' as const,
+          score: 85,
+          timeSpent: 1800, // 30 minutes
+          completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+        });
+
+        // Second module in progress
+        if (insertedModules[1]) {
+          progressData.push({
+            userId: user.id,
+            moduleId: insertedModules[1].id,
+            status: 'in_progress' as const,
+            timeSpent: 900, // 15 minutes
+          });
+        }
+      }
+
+      if (progressData.length > 0) {
+        await db
+          .insert(schema.trainingProgress)
+          .values(progressData)
+          .onConflictDoNothing();
+        console.log(`✅ Created training progress for ${traineesOnly.length} users`);
+      }
+    }
+
+    // Create roleplay sessions for active trainees
+    const activeTrainees = allUsers.filter(u => u.role === 'TRAINEE' && u.totalXp > 0);
+    if (activeTrainees.length > 0) {
+      const roleplayData = activeTrainees.map(user => ({
+        userId: user.id,
+        scenarioId: 'objection-handling-001',
+        scenarioTitle: 'Price Objection - Insurance Claim',
+        difficulty: 'BEGINNER' as const,
+        messages: [
+          { role: 'system', content: 'You are a homeowner concerned about price', timestamp: new Date() },
+          { role: 'user', content: 'I understand your concerns. Let me explain the value...', timestamp: new Date() },
+        ],
+        score: 78,
+        feedback: {
+          strengths: ['Good opening', 'Confident tone'],
+          improvements: ['Could elaborate more on value proposition'],
+          tips: ['Use specific examples when discussing benefits'],
+        },
+        duration: 420, // 7 minutes
+        xpEarned: 50,
+        completedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+      }));
+
+      await db
+        .insert(schema.roleplaySessions)
+        .values(roleplayData)
+        .onConflictDoNothing();
+      console.log(`✅ Created roleplay sessions for ${activeTrainees.length} trainees`);
+    }
+
+    // ============================================================================
+    // 7. CREATE CANDIDATES AND INTERVIEWS
+    // ============================================================================
+    console.log('\n👔 Creating candidates and interviews...');
+
+    const candidatesData = [
+      {
+        firstName: 'David',
+        lastName: 'Brown',
+        email: 'david.brown@email.com',
+        phone: '555-1001',
+        position: 'Sales Representative',
+        status: 'interview' as const,
+        resumeUrl: 'https://example.com/resumes/david-brown.pdf',
+        source: 'LinkedIn',
+        rating: 4,
+        notes: 'Strong communication skills, 3 years sales experience',
+        assignedTo: hrAdmin?.id,
+      },
+      {
+        firstName: 'Maria',
+        lastName: 'Garcia',
+        email: 'maria.garcia@email.com',
+        phone: '555-1002',
+        position: 'Field Technician',
+        status: 'offer' as const,
+        resumeUrl: 'https://example.com/resumes/maria-garcia.pdf',
+        source: 'Indeed',
+        rating: 5,
+        notes: 'Excellent technical background, roofing certification',
+        assignedTo: hrAdmin?.id,
+      },
+      {
+        firstName: 'James',
+        lastName: 'Wilson',
+        email: 'james.wilson@email.com',
+        phone: '555-1003',
+        position: 'Sales Trainee',
+        status: 'screening' as const,
+        source: 'Referral',
+        rating: 3,
+        notes: 'Recent college graduate, no sales experience but eager to learn',
+        assignedTo: hrAdmin?.id,
+      },
+    ];
+
+    const insertedCandidates = await db
+      .insert(schema.candidates)
+      .values(candidatesData)
+      .onConflictDoNothing()
+      .returning();
+
+    console.log(`✅ Created ${insertedCandidates.length} candidates`);
+
+    // Create interviews for candidates
+    if (insertedCandidates.length > 0 && manager) {
+      const interviewsData = [
+        {
+          candidateId: insertedCandidates[0].id,
+          interviewerId: manager.id,
+          scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+          duration: 60,
+          type: 'video' as const,
+          status: 'scheduled' as const,
+          meetingLink: 'https://zoom.us/j/123456789',
+          notes: 'First round interview - focus on sales experience',
+        },
+        {
+          candidateId: insertedCandidates[1].id,
+          interviewerId: manager.id,
+          scheduledAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+          duration: 45,
+          type: 'in_person' as const,
+          status: 'completed' as const,
+          location: 'Main Office - Conference Room A',
+          rating: 5,
+          feedback: 'Excellent technical knowledge and great attitude. Highly recommend.',
+          recommendation: 'hire' as const,
+          notes: 'Technical assessment passed with flying colors',
+        },
+        {
+          candidateId: insertedCandidates[2].id,
+          interviewerId: hrAdmin?.id || manager.id,
+          scheduledAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          duration: 30,
+          type: 'phone' as const,
+          status: 'scheduled' as const,
+          notes: 'Initial screening call',
+        },
+      ];
+
+      const insertedInterviews = await db
+        .insert(schema.interviews)
+        .values(interviewsData)
+        .onConflictDoNothing()
+        .returning();
+
+      console.log(`✅ Created ${insertedInterviews.length} interviews`);
+    }
+
+    // ============================================================================
+    // 8. CREATE ONBOARDING TASKS
+    // ============================================================================
+    console.log('\n📋 Creating onboarding tasks...');
+
+    // Create onboarding tasks for new employees
+    const recentHires = allUsers.filter(u =>
+      u.hireDate && new Date(u.hireDate) > new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+    );
+
+    if (recentHires.length > 0 && hrAdmin) {
+      const onboardingTasksData = [];
+
+      for (const employee of recentHires) {
+        onboardingTasksData.push(
+          {
+            employeeId: employee.id,
+            taskName: 'Complete W-4 and I-9 Forms',
+            description: 'Fill out and submit required tax and employment eligibility forms',
+            category: 'paperwork' as const,
+            status: 'completed' as const,
+            dueDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            assignedTo: hrAdmin.id,
+            completedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+            notes: 'All paperwork received and verified',
+          },
+          {
+            employeeId: employee.id,
+            taskName: 'Company Orientation',
+            description: 'Attend new hire orientation session covering company policies and culture',
+            category: 'orientation' as const,
+            status: 'completed' as const,
+            dueDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            assignedTo: hrAdmin.id,
+            completedAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+          },
+          {
+            employeeId: employee.id,
+            taskName: 'Complete Safety Training',
+            description: 'Complete OSHA safety training modules',
+            category: 'training' as const,
+            status: employee.role === 'TRAINEE' ? 'in_progress' as const : 'completed' as const,
+            dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            assignedTo: hrAdmin.id,
+            completedAt: employee.role === 'TRAINEE' ? undefined : new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+          },
+          {
+            employeeId: employee.id,
+            taskName: 'Setup Company Email and Systems Access',
+            description: 'IT to configure email, VPN, and necessary system access',
+            category: 'access' as const,
+            status: 'completed' as const,
+            dueDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            assignedTo: hrAdmin.id,
+            completedAt: new Date(Date.now() - 24 * 24 * 60 * 60 * 1000),
+          },
+          {
+            employeeId: employee.id,
+            taskName: 'Issue Company Equipment',
+            description: 'Provide laptop, phone, and other necessary equipment',
+            category: 'equipment' as const,
+            status: employee.role === 'FIELD_TECH' ? 'completed' as const : 'pending' as const,
+            dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            assignedTo: hrAdmin.id,
+            completedAt: employee.role === 'FIELD_TECH' ? new Date(Date.now() - 15 * 24 * 60 * 60 * 1000) : undefined,
+          }
+        );
+      }
+
+      if (onboardingTasksData.length > 0) {
+        const insertedTasks = await db
+          .insert(schema.onboardingTasks)
+          .values(onboardingTasksData)
+          .onConflictDoNothing()
+          .returning();
+
+        console.log(`✅ Created ${insertedTasks.length} onboarding tasks for ${recentHires.length} employees`);
+      }
+    }
+
+    // ============================================================================
+    // 9. CREATE CONTESTS
     // ============================================================================
     console.log('\n🏁 Creating contests...');
 
@@ -652,6 +990,8 @@ async function seedDatabase() {
     console.log(`   - Users: 8+ (including existing admin)`);
     console.log(`   - Sales Reps: ${insertedSalesRepsRecords.length}`);
     console.log(`   - Achievements: ${insertedAchievements.length}`);
+    console.log(`   - Training Modules: ${insertedModules.length}`);
+    console.log(`   - Candidates: ${insertedCandidates.length}`);
     console.log(`   - Contests: ${insertedContests.length}`);
 
     console.log('\n🔐 Login Credentials (all users):');

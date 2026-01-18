@@ -14,6 +14,7 @@ import { dirname, join } from "path";
 // Import routes
 import authRoutes from "./routes/auth/index.js";
 import hrRoutes from "./routes/hr/index.js";
+import hrPublicRoutes from "./routes/hr/public.js";
 import leaderboardRoutes from "./routes/leaderboard/index.js";
 import trainingRoutes from "./routes/training/index.js";
 import fieldRoutes from "./routes/field/index.js";
@@ -21,6 +22,7 @@ import aiRoutes from "./routes/ai/index.js";
 
 // Import WebSocket handlers
 import { setupWebSocket } from "./websocket/index.js";
+import { initializeAchievementBroadcaster } from "./utils/achievement-broadcaster.js";
 
 // Import database
 import { db } from "./db.js";
@@ -93,6 +95,7 @@ app.get('/api/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/hr', hrRoutes);
+app.use('/api/hr/public', hrPublicRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/training', trainingRoutes);
 app.use('/api/field', fieldRoutes);
@@ -136,8 +139,12 @@ app.get('/api/teams', async (req, res) => {
   }
 });
 
-// Setup WebSocket handlers
-setupWebSocket(io);
+// Setup WebSocket handlers and export for use in routes
+const wsHandlers = setupWebSocket(io);
+export { wsHandlers };
+
+// Initialize achievement broadcaster with WebSocket handlers
+initializeAchievementBroadcaster(wsHandlers);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

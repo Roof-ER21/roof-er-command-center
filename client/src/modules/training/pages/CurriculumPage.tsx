@@ -1,7 +1,10 @@
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CURRICULUM_MODULES } from "@shared/constants";
-import { Play, CheckCircle, Lock, BookOpen, Gamepad2, Mic, Brain } from "lucide-react";
+import { Play, CheckCircle, Lock, BookOpen, Gamepad2, Mic, Brain, Loader2 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 const getModuleIcon = (type: string) => {
   switch (type) {
@@ -21,13 +24,57 @@ const getModuleIcon = (type: string) => {
 };
 
 export function CurriculumPage() {
-  const completedModules = 8; // This will come from API
+  const navigate = useNavigate();
+
+  // Fetch curriculum data with progress from API
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['training', 'curriculum'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/training/curriculum');
+      return response.data;
+    },
+  });
+
+  const modules = data?.modules || [];
+  const completedModules = modules.filter((m: any) => m.completed).length;
+
+  const handleModuleClick = (moduleId: number, isLocked: boolean) => {
+    if (!isLocked) {
+      navigate(`/training/modules/${moduleId}`);
+    }
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-amber-500" />
+          <p className="text-muted-foreground">Loading curriculum...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <p className="text-red-500 mb-2">Failed to load curriculum</p>
+          <p className="text-muted-foreground text-sm">{(error as Error).message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const totalModules = CURRICULUM_MODULES.length;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Training Curriculum</h1>
-        <p className="text-muted-foreground">Complete all 12 modules to become certified</p>
+        <p className="text-muted-foreground">Complete all {totalModules} modules to become certified</p>
       </div>
 
       {/* Progress bar */}
@@ -35,12 +82,12 @@ export function CurriculumPage() {
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Overall Progress</span>
-            <span className="text-sm text-muted-foreground">{completedModules}/12 complete</span>
+            <span className="text-sm text-muted-foreground">{completedModules}/{totalModules} complete</span>
           </div>
           <div className="h-3 bg-muted rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-amber-500 to-amber-600 rounded-full transition-all"
-              style={{ width: `${(completedModules / 12) * 100}%` }}
+              style={{ width: `${(completedModules / totalModules) * 100}%` }}
             />
           </div>
         </CardContent>
@@ -49,9 +96,11 @@ export function CurriculumPage() {
       {/* Module list */}
       <div className="space-y-4">
         {CURRICULUM_MODULES.map((module, index) => {
-          const isCompleted = index < completedModules;
+          // Find module progress from API data
+          const moduleProgress = modules.find((m: any) => m.id === module.id);
+          const isCompleted = moduleProgress?.completed || false;
           const isLocked = index > completedModules;
-          const isCurrent = index === completedModules;
+          const isCurrent = index === completedModules && !isCompleted;
           const ModuleIcon = getModuleIcon(module.type);
 
           return (
@@ -88,11 +137,19 @@ export function CurriculumPage() {
                 </div>
                 <div>
                   {isCompleted ? (
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleModuleClick(module.id, false)}
+                    >
                       Review
                     </Button>
                   ) : isCurrent ? (
-                    <Button size="sm" className="bg-amber-500 hover:bg-amber-600">
+                    <Button
+                      size="sm"
+                      className="bg-amber-500 hover:bg-amber-600"
+                      onClick={() => handleModuleClick(module.id, false)}
+                    >
                       <Play className="mr-2 h-4 w-4" />
                       Start
                     </Button>

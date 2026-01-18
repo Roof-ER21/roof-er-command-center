@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy, TrendingUp, TrendingDown, Medal, Award } from "lucide-react";
 import { DualColorProgressBar } from "@/components/DualColorProgressBar";
-import type { SalesRep } from "@/shared/schema";
+import { RepDetailModal } from "./components/RepDetailModal";
+import type { SalesRep } from "@shared/schema";
 
 const formatCurrency = (value: string | number): string => {
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -27,6 +28,13 @@ const formatNumber = (value: string | number): string => {
 export function SalesLeaderboard() {
   const [sortBy, setSortBy] = useState<string>("yearlyRevenue");
   const [teamFilter, setTeamFilter] = useState<string>("all");
+  const [selectedRepId, setSelectedRepId] = useState<number | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleRepClick = useCallback((rep: SalesRep) => {
+    setSelectedRepId(rep.id);
+    setIsModalOpen(true);
+  }, []);
 
   const { data: salesReps = [], isLoading } = useQuery<SalesRep[]>({
     queryKey: ['/api/sales-reps', { sortBy }],
@@ -198,7 +206,11 @@ export function SalesLeaderboard() {
                 const yearlyGrowth = parseFloat(rep.yearlyGrowth || '0');
 
                 return (
-                  <TableRow key={rep.id} className={isTop3 ? 'bg-muted/50' : ''}>
+                  <TableRow
+                    key={rep.id}
+                    onClick={() => handleRepClick(rep)}
+                    className={`${isTop3 ? 'bg-muted/50' : ''} cursor-pointer hover:bg-muted/70`}
+                  >
                     <TableCell className="font-medium">
                       <div className="flex items-center justify-center">
                         {getRankBadge(rank)}
@@ -273,6 +285,13 @@ export function SalesLeaderboard() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Rep Detail Modal */}
+      <RepDetailModal
+        repId={selectedRepId}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+      />
     </div>
   );
 }

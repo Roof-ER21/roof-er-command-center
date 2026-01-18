@@ -72,26 +72,45 @@ export function setupWebSocket(io: SocketIOServer) {
     });
   });
 
-  // Export broadcast functions
+  // Export broadcast functions and handlers
   return {
-    // Broadcast to all connected clients
+    // Main namespace functions
     broadcast: (event: string, data: unknown) => {
       io.emit(event, data);
     },
 
-    // Broadcast to specific user
     toUser: (userId: number, event: string, data: unknown) => {
       io.to(`user:${userId}`).emit(event, data);
     },
 
-    // Broadcast to TV display
+    // Leaderboard handler
+    leaderboard: leaderboardHandler,
+
+    // Training handler
+    training: trainingHandler,
+
+    // Legacy compatibility
     toTVDisplay: (data: unknown) => {
-      leaderboardNs.to("tv-display").emit("leaderboard:update", data);
+      leaderboardHandler.updateTVDisplay(data);
     },
 
-    // Broadcast leaderboard update
     updateLeaderboard: (rankings: unknown) => {
-      leaderboardNs.emit("rankings:update", rankings);
+      leaderboardHandler.broadcastLeaderboardRefresh(rankings);
     },
   };
 }
+
+// Export types for use in other modules
+export type {
+  RankingUpdate,
+  ContestEntry,
+  AchievementEvent,
+} from "./leaderboard";
+
+export type {
+  XPGainEvent,
+  LevelUpEvent,
+  StreakUpdate,
+  TrainingAchievement,
+  RoleplayProgress,
+} from "./training";

@@ -62,6 +62,43 @@ Runs database migrations (if you're using migration files).
 npm run db:migrate
 ```
 
+### 4. Capture Leaderboard Snapshot (`capture-leaderboard-snapshot.ts`)
+
+Creates daily snapshots of the leaderboard for historical rank tracking and chart data.
+
+**Usage:**
+```bash
+npm run leaderboard:snapshot
+```
+
+**What it does:**
+- Fetches all active sales reps
+- Calculates current rank based on monthly signups
+- Calculates performance points (signups × 100 + rank bonus)
+- Inserts snapshot records with date, rank, points, and season ID
+- Skips if snapshot already exists for today (idempotent)
+
+**Points Formula:**
+```
+Points = (Monthly Signups × 100) + Rank Bonus
+
+Rank Bonuses:
+  #1:     +500 points
+  #2:     +300 points
+  #3:     +200 points
+  #4-5:   +100 points
+  #6-10:  +50 points
+  #11+:   +0 points
+```
+
+**Scheduling:**
+- **Recommended:** Run daily at midnight (00:00 UTC)
+- **Railway:** Use Railway Cron Jobs
+- **System Cron:** `0 0 * * * cd /path/to/project && npm run leaderboard:snapshot`
+- **In-app:** Use `node-cron` package (see docs)
+
+**See:** `/docs/LEADERBOARD_SNAPSHOT_CRON.md` for detailed setup instructions
+
 ## Quick Start
 
 ### First Time Setup
@@ -268,6 +305,10 @@ npm run db:seed
 - `seed-database.ts` - Main seeding script
 - `reset-and-seed.ts` - Reset and seed utility
 - `run-migrations.ts` - Migration runner
+- `capture-leaderboard-snapshot.ts` - Daily leaderboard snapshot cron job
+- `health-check.ts` - System health check utility
+- `validate-build.ts` - Build validation script
+- `verify-tables.ts` - Database table verification
 - `SEED_DATA_REFERENCE.md` - Complete reference of seeded data
 - `README.md` - This file
 

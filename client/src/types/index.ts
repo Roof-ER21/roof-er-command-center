@@ -21,6 +21,9 @@ export interface User {
   territoryId?: number;
   employmentType?: 'full_time' | 'part_time' | 'contractor';
   hireDate?: string;
+  phone?: string;
+  address?: string;
+  timezone?: string;
 
   // Sales/Leaderboard fields
   linkedSalesRepId?: number;
@@ -30,7 +33,10 @@ export interface User {
   // Training fields
   trainingLevel?: TrainingLevel;
   totalXp?: number;
+  currentLevel?: number;
   currentStreak?: number;
+  longestStreak?: number;
+  avatar?: string;
   pinHash?: string;
 
   // Field fields

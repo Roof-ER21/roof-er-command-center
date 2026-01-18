@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { DualColorProgressBar } from '@/components/DualColorProgressBar';
-import type { SalesRep } from '@/shared/schema';
+import type { SalesRep } from '@shared/schema';
 
 interface AnimatedRankRowProps {
   salesRep: SalesRep;
@@ -12,6 +12,7 @@ interface AnimatedRankRowProps {
   previousRank?: number;
   isRankChanging: boolean;
   onRankChangeComplete: () => void;
+  onClick?: (salesRep: SalesRep) => void;
 }
 
 const formatCurrency = (value: string | number): string => {
@@ -44,7 +45,8 @@ export const AnimatedRankRow = forwardRef<HTMLTableRowElement, AnimatedRankRowPr
     currentRank,
     previousRank,
     isRankChanging,
-    onRankChangeComplete
+    onRankChangeComplete,
+    onClick
   }, ref) {
     const [showRankChange, setShowRankChange] = useState(false);
     const [rankDirection, setRankDirection] = useState<'up' | 'down' | null>(null);
@@ -106,9 +108,10 @@ export const AnimatedRankRow = forwardRef<HTMLTableRowElement, AnimatedRankRowPr
     return (
       <TableRow
         ref={ref}
+        onClick={() => onClick?.(salesRep)}
         className={`transition-all duration-300 ${
           showRankChange ? 'bg-primary/10' : ''
-        } ${isTop3 ? 'bg-muted/50' : ''}`}
+        } ${isTop3 ? 'bg-muted/50' : ''} ${onClick ? 'cursor-pointer hover:bg-muted/70' : ''}`}
       >
         <TableCell className="text-center font-bold relative">
           <div className="flex items-center justify-center gap-2">

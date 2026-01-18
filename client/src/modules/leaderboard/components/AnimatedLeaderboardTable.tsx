@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AnimatedRankRow } from './AnimatedRankRow';
-import type { SalesRep } from '@/shared/schema';
+import type { SalesRep } from '@shared/schema';
 
 interface AnimatedLeaderboardTableProps {
   salesReps: SalesRep[];
   className?: string;
+  onRepClick?: (salesRep: SalesRep) => void;
 }
 
 interface RankChange {
@@ -15,7 +16,7 @@ interface RankChange {
   direction: 'up' | 'down';
 }
 
-export function AnimatedLeaderboardTable({ salesReps, className }: AnimatedLeaderboardTableProps) {
+export function AnimatedLeaderboardTable({ salesReps, className, onRepClick }: AnimatedLeaderboardTableProps) {
   const [previousRanks, setPreviousRanks] = useState<Map<number, number>>(new Map());
   const [rankChanges, setRankChanges] = useState<RankChange[]>([]);
   const [activeRankChanges, setActiveRankChanges] = useState<Set<number>>(new Set());
@@ -116,6 +117,7 @@ export function AnimatedLeaderboardTable({ salesReps, className }: AnimatedLeade
                 previousRank={rankChange?.oldRank}
                 isRankChanging={isChanging}
                 onRankChangeComplete={() => handleRankChangeComplete(salesRep.id)}
+                onClick={onRepClick}
               />
             );
           })}

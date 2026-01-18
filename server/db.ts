@@ -1,5 +1,5 @@
-import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
-import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
+import { drizzle as drizzleNeon, type NeonHttpDatabase } from "drizzle-orm/neon-http";
+import { drizzle as drizzlePostgres, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { neon } from "@neondatabase/serverless";
 import postgres from "postgres";
 import * as schema from "../shared/schema.js";
@@ -10,18 +10,18 @@ if (!process.env.DATABASE_URL) {
 
 const isNeon = process.env.DATABASE_URL.includes("neon.tech");
 
-// Create database connection - supports both Neon and local PostgreSQL
-let db: ReturnType<typeof drizzleNeon> | ReturnType<typeof drizzlePostgres>;
-let sql: ReturnType<typeof neon> | ReturnType<typeof postgres>;
+// Create typed database connection - supports both Neon and local PostgreSQL
+type DbType = NeonHttpDatabase<typeof schema> | PostgresJsDatabase<typeof schema>;
+let db: DbType;
 
 if (isNeon) {
   // Use Neon serverless driver for Neon databases
-  sql = neon(process.env.DATABASE_URL);
-  db = drizzleNeon(sql as ReturnType<typeof neon>, { schema });
+  const sql = neon(process.env.DATABASE_URL);
+  db = drizzleNeon(sql, { schema });
 } else {
   // Use postgres.js for local PostgreSQL
-  sql = postgres(process.env.DATABASE_URL);
-  db = drizzlePostgres(sql as ReturnType<typeof postgres>, { schema });
+  const sql = postgres(process.env.DATABASE_URL);
+  db = drizzlePostgres(sql, { schema });
 }
 
 export { db, schema };
@@ -29,11 +29,8 @@ export { db, schema };
 // Helper function to check database connection
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
-    if (isNeon) {
-      await (sql as ReturnType<typeof neon>)`SELECT 1`;
-    } else {
-      await (sql as ReturnType<typeof postgres>)`SELECT 1`;
-    }
+    // Use a simple select to test connection
+    await db.select().from(schema.users).limit(1);
     return true;
   } catch (error) {
     console.error("Database connection failed:", error);
