@@ -24,6 +24,8 @@ import { setupWebSocket } from "./websocket/index.js";
 
 // Import database
 import { db } from "./db.js";
+import { salesReps, teams } from "../shared/schema.js";
+import { eq, desc } from "drizzle-orm";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -95,6 +97,44 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/training', trainingRoutes);
 app.use('/api/field', fieldRoutes);
 app.use('/api/ai', aiRoutes);
+
+// Direct routes for leaderboard data (used by some components)
+// /api/sales-reps -> sales reps list
+app.get('/api/sales-reps', async (req, res) => {
+  try {
+    const reps = await db.select()
+      .from(salesReps)
+      .where(eq(salesReps.isActive, true))
+      .orderBy(desc(salesReps.monthlyRevenue));
+
+    const rankedReps = reps.map((rep, index) => ({
+      ...rep,
+      rank: index + 1,
+      monthlyRevenue: Number(rep.monthlyRevenue),
+      yearlyRevenue: Number(rep.yearlyRevenue),
+      allTimeRevenue: Number(rep.allTimeRevenue),
+      monthlySignups: Number(rep.monthlySignups),
+      yearlySignups: Number(rep.yearlySignups),
+      goalProgress: Number(rep.goalProgress),
+      monthlyGrowth: Number(rep.monthlyGrowth),
+    }));
+    res.json(rankedReps);
+  } catch (error) {
+    console.error("Sales reps error:", error);
+    res.json([]);
+  }
+});
+
+// /api/teams -> teams list
+app.get('/api/teams', async (req, res) => {
+  try {
+    const allTeams = await db.select().from(teams).where(eq(teams.isActive, true));
+    res.json(allTeams);
+  } catch (error) {
+    console.error("Teams error:", error);
+    res.json([]);
+  }
+});
 
 // Setup WebSocket handlers
 setupWebSocket(io);
