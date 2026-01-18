@@ -1,134 +1,251 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, MessageCircle, BookOpen, Award, Flame, Star, ArrowRight, Play } from "lucide-react";
-import { CURRICULUM_MODULES } from "@shared/constants";
+import {
+  MessageCircle,
+  BookOpen,
+  Award,
+  Flame,
+  Star,
+  Play,
+  TrendingUp,
+  Target,
+  Calendar,
+  ChevronRight,
+  History,
+  Trophy
+} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+
+interface QuickAction {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  href: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+}
 
 export function TrainingDashboard() {
-  const cards = [
-    { title: "Coach Mode", description: "AI-guided learning", icon: MessageCircle, href: "/training/coach" },
-    { title: "Roleplay", description: "Practice with AI", icon: Play, href: "/training/roleplay" },
-    { title: "Curriculum", description: "12-module training", icon: BookOpen, href: "/training/curriculum" },
-    { title: "Achievements", description: "Your badges", icon: Award, href: "/training/achievements" },
+  const { user } = useAuth();
+  const [stats, setStats] = useState({
+    totalSessions: 0,
+    avgScore: 0,
+    currentStreak: 0,
+    totalXP: 0,
+    currentLevel: 1,
+    weeklyGoalProgress: 0,
+    achievements: 0
+  });
+
+  // TODO: Replace with actual API call to /api/training/stats
+  useEffect(() => {
+    // Mock data for now - will be replaced with API call
+    setStats({
+      totalSessions: 12,
+      avgScore: 85,
+      currentStreak: 7,
+      totalXP: 1250,
+      currentLevel: 5,
+      weeklyGoalProgress: 80,
+      achievements: 15
+    });
+  }, [user?.id]);
+
+  const quickActions: QuickAction[] = [
+    {
+      id: 'coach',
+      title: 'Coach Mode',
+      description: 'AI-guided learning',
+      icon: MessageCircle,
+      href: '/training/coach',
+      color: 'text-red-400',
+      bgColor: 'bg-red-600/20',
+      borderColor: 'border-red-500/50'
+    },
+    {
+      id: 'roleplay',
+      title: 'Roleplay',
+      description: 'Practice with AI',
+      icon: Play,
+      href: '/training/roleplay',
+      color: 'text-cyan-400',
+      bgColor: 'bg-cyan-600/20',
+      borderColor: 'border-cyan-500/50'
+    },
+    {
+      id: 'curriculum',
+      title: 'Curriculum',
+      description: '12-module training',
+      icon: BookOpen,
+      href: '/training/curriculum',
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-600/20',
+      borderColor: 'border-purple-500/50'
+    },
+    {
+      id: 'achievements',
+      title: 'Achievements',
+      description: 'View your badges',
+      icon: Trophy,
+      href: '/training/achievements',
+      color: 'text-yellow-400',
+      bgColor: 'bg-yellow-600/20',
+      borderColor: 'border-yellow-500/50'
+    }
   ];
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Training Center</h1>
-          <p className="text-muted-foreground">Level up your roofing sales skills</p>
+    <div className="space-y-8 max-w-4xl mx-auto p-6">
+      {/* Welcome Header */}
+      <div className="space-y-3">
+        <p className="text-muted-foreground text-sm">{getGreeting()}</p>
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+          Welcome back, <span className="text-red-500">{user?.name || 'there'}</span>!
+        </h1>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Current Streak */}
+        <Card className="p-4 bg-gradient-to-br from-orange-900/30 to-orange-900/10 border-orange-500/30">
+          <div className="flex items-center space-x-2 mb-2">
+            <Flame className="w-5 h-5 text-orange-400" />
+            <span className="text-xs text-orange-300 uppercase tracking-wider">Streak</span>
+          </div>
+          <div className="text-3xl font-bold text-orange-400">{stats.currentStreak}</div>
+          <div className="text-xs text-muted-foreground">days</div>
+        </Card>
+
+        {/* Avg Score */}
+        <Card className="p-4 bg-gradient-to-br from-green-900/30 to-green-900/10 border-green-500/30">
+          <div className="flex items-center space-x-2 mb-2">
+            <TrendingUp className="w-5 h-5 text-green-400" />
+            <span className="text-xs text-green-300 uppercase tracking-wider">Avg Score</span>
+          </div>
+          <div className="text-3xl font-bold text-green-400">{stats.avgScore}%</div>
+          <div className="text-xs text-muted-foreground">all time</div>
+        </Card>
+
+        {/* Level */}
+        <Card className="p-4 bg-gradient-to-br from-purple-900/30 to-purple-900/10 border-purple-500/30">
+          <div className="flex items-center space-x-2 mb-2">
+            <Award className="w-5 h-5 text-purple-400" />
+            <span className="text-xs text-purple-300 uppercase tracking-wider">Level</span>
+          </div>
+          <div className="text-3xl font-bold text-purple-400">{stats.currentLevel}</div>
+          <div className="text-xs text-muted-foreground">{stats.totalXP} XP</div>
+        </Card>
+
+        {/* Sessions */}
+        <Card className="p-4 bg-gradient-to-br from-blue-900/30 to-blue-900/10 border-blue-500/30">
+          <div className="flex items-center space-x-2 mb-2">
+            <Target className="w-5 h-5 text-blue-400" />
+            <span className="text-xs text-blue-300 uppercase tracking-wider">Sessions</span>
+          </div>
+          <div className="text-3xl font-bold text-blue-400">{stats.totalSessions}</div>
+          <div className="text-xs text-muted-foreground">completed</div>
+        </Card>
+      </div>
+
+      {/* Weekly Goal Progress */}
+      <Card className="p-5 bg-card/80 border">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-2">
+            <Calendar className="w-5 h-5 text-yellow-400" />
+            <span className="text-sm font-medium">Weekly Goal</span>
+          </div>
+          <span className="text-xs text-muted-foreground">{stats.weeklyGoalProgress}% complete</span>
         </div>
-        <Button asChild className="bg-amber-500 hover:bg-amber-600">
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 transition-all duration-500"
+            style={{ width: `${stats.weeklyGoalProgress}%` }}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Complete 5 training sessions this week to earn bonus XP!
+        </p>
+      </Card>
+
+      {/* Level Progress Bar */}
+      <Card className="p-5 bg-card/80 border">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-2">
+            <Star className="w-5 h-5 text-amber-400" />
+            <span className="text-sm font-medium">Level {stats.currentLevel}</span>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {stats.totalXP} / {(stats.currentLevel + 1) * 500} XP
+          </span>
+        </div>
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-500"
+            style={{ width: `${((stats.totalXP % 500) / 500) * 100}%` }}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          {((stats.currentLevel + 1) * 500) - stats.totalXP} XP to Level {stats.currentLevel + 1}
+        </p>
+      </Card>
+
+      {/* Quick Actions */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Quick Actions</h2>
+
+        <div className="grid grid-cols-2 gap-3">
+          {quickActions.map((action) => (
+            <Link key={action.id} to={action.href}>
+              <Card
+                className={`group p-5 ${action.bgColor} border ${action.borderColor} transition-all duration-300 hover:scale-[1.02] cursor-pointer`}
+              >
+                <div className={`${action.color} mb-3`}>
+                  <action.icon className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-bold mb-1">{action.title}</h3>
+                <p className="text-xs text-muted-foreground">{action.description}</p>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* View History Link */}
+      <Link to="/training/history">
+        <Card className="group p-4 bg-card/50 hover:bg-card border hover:border-red-500/30 transition-all duration-300 cursor-pointer">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <History className="w-5 h-5 text-red-400" />
+              <div className="text-left">
+                <h3 className="font-medium">View Training History</h3>
+                <p className="text-xs text-muted-foreground">See your past sessions and analytics</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-red-400 group-hover:translate-x-1 transition-all" />
+          </div>
+        </Card>
+      </Link>
+
+      {/* Start Training CTA */}
+      <div className="flex justify-center pt-6">
+        <Button asChild size="lg" className="bg-gradient-to-r from-red-700 to-red-600 hover:from-red-800 hover:to-red-700">
           <Link to="/training/roleplay">
-            <Play className="mr-2 h-4 w-4" />
-            Start Training
+            <Play className="mr-2 h-5 w-5" />
+            Start Training Session
           </Link>
         </Button>
       </div>
-
-      {/* Progress stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Star className="h-4 w-4 text-amber-500" />
-              Total XP
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">1,250</div>
-            <p className="text-xs text-muted-foreground mt-1">Level: Intermediate</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Flame className="h-4 w-4 text-orange-500" />
-              Current Streak
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">7 days</div>
-            <p className="text-xs text-muted-foreground mt-1">Keep it going!</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-blue-500" />
-              Modules Done
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">8/12</div>
-            <p className="text-xs text-muted-foreground mt-1">67% complete</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Award className="h-4 w-4 text-purple-500" />
-              Achievements
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">15</div>
-            <p className="text-xs text-muted-foreground mt-1">3 this week</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Navigation cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {cards.map((card) => (
-          <Link key={card.title} to={card.href}>
-            <Card className="hover:bg-muted/50 transition-colors cursor-pointer group h-full">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                <card.icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <CardDescription>{card.description}</CardDescription>
-                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-2" />
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-
-      {/* Curriculum overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5" />
-            Training Curriculum
-          </CardTitle>
-          <CardDescription>Complete all 12 modules to become a certified roofing sales pro</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-            {CURRICULUM_MODULES.map((module, index) => (
-              <div
-                key={module.id}
-                className={`flex items-center gap-3 p-3 rounded-lg ${
-                  index < 8 ? 'bg-green-500/10' : 'bg-muted'
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  index < 8 ? 'bg-green-500 text-white' : 'bg-muted-foreground/20'
-                }`}>
-                  {index < 8 ? '✓' : module.id}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{module.title}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{module.type}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

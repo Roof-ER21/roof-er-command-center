@@ -1,77 +1,210 @@
-import { Link } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Medal, Target, Tv, ArrowRight, TrendingUp } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { TopPerformers } from "./components/TopPerformers";
+import { AnimatedLeaderboardTable } from "./components/AnimatedLeaderboardTable";
+import { PerformanceStats } from "./components/PerformanceStats";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RefreshCw, Trophy } from "lucide-react";
+import type { SalesRep } from "@/shared/schema";
 
 export function LeaderboardDashboard() {
-  const cards = [
-    { title: "Sales Rankings", description: "Current standings", icon: Trophy, href: "/leaderboard/sales", value: "View" },
-    { title: "Active Contests", description: "Compete for prizes", icon: Medal, href: "/leaderboard/contests", value: "3" },
-    { title: "Bonus Tracker", description: "Your earnings", icon: Target, href: "/leaderboard/bonuses", value: "$2,450" },
-    { title: "TV Display", description: "Office leaderboard", icon: Tv, href: "/tv-display", value: "Launch" },
-  ];
+  const [selectedTeam, setSelectedTeam] = useState<string>("all");
+  const [selectedTerritory, setSelectedTerritory] = useState<string>("all");
+  const [selectedRep, setSelectedRep] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("yearlyRevenue");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const previousSalesRepsRef = useRef<SalesRep[]>([]);
+
+  const { data: allSalesReps = [], isLoading, refetch } = useQuery<SalesRep[]>({
+    queryKey: ['/api/sales-reps', { team: selectedTeam, territoryId: selectedTerritory, sortBy, sortOrder }],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        team: selectedTeam,
+        territoryId: selectedTerritory,
+        sortBy,
+        sortOrder
+      });
+
+      const response = await fetch(`/api/sales-reps?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch sales reps');
+      }
+
+      return response.json();
+    }
+  });
+
+  // Filter by individual rep
+  const salesReps = selectedRep === "all"
+    ? allSalesReps
+    : allSalesReps.filter(rep => rep.name === selectedRep);
+
+  const { data: teams = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ['/api/teams'],
+    queryFn: async () => {
+      const response = await fetch('/api/teams', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch teams');
+      }
+
+      return response.json();
+    }
+  });
+
+  const { data: stats } = useQuery<{
+    totalRevenue: string;
+    totalSignups: string;
+    avgPerformance: string;
+    goalsMet: string;
+  }>({
+    queryKey: ['/api/leaderboard/stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/leaderboard/stats', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch stats');
+      }
+
+      return response.json();
+    }
+  });
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [refetch]);
+
+  // Update previous reps reference
+  useEffect(() => {
+    if (salesReps.length > 0) {
+      previousSalesRepsRef.current = [...salesReps];
+    }
+  }, [salesReps]);
+
+  const handleRefresh = () => {
+    refetch();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl font-semibold">Loading leaderboard...</div>
+      </div>
+    );
+  }
+
+  const topPerformers = salesReps.slice(0, 3);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Sales Leaderboard</h1>
-          <p className="text-muted-foreground">Track performance and compete with your team</p>
+    <div className="min-h-screen">
+      {/* Header */}
+      <div className="bg-card border-b">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
+                <Trophy className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold">
+                  Sales Leaderboard
+                </h1>
+                <p className="text-lg text-muted-foreground mt-1">
+                  Real-time performance tracking with automated rank transitions
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4 items-center">
+              <Select value={selectedTeam} onValueChange={(value) => {
+                setSelectedTeam(value);
+                setSelectedRep("all"); // Reset rep filter when team changes
+              }}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Teams" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Teams</SelectItem>
+                  {teams.map(team => (
+                    <SelectItem key={team.id} value={team.name}>{team.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedRep} onValueChange={setSelectedRep}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Reps" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Reps</SelectItem>
+                  {allSalesReps.map(rep => (
+                    <SelectItem key={rep.id} value={rep.name}>{rep.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthlySignups">Monthly Signups</SelectItem>
+                  <SelectItem value="yearlySignups">Yearly Signups</SelectItem>
+                  <SelectItem value="yearlyRevenue">Yearly Revenue</SelectItem>
+                  <SelectItem value="allTimeRevenue">All-Time Revenue</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button
+                onClick={handleRefresh}
+                variant="default"
+                className="gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Your Rank</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">#3</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-              <TrendingUp className="h-3 w-3 text-green-500" />
-              Up 2 spots this week
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Month Sales</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">$45,230</div>
-            <p className="text-xs text-muted-foreground mt-1">87% of goal</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total XP</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">12,450</div>
-            <p className="text-xs text-muted-foreground mt-1">AGNU 21 level: Gold</p>
-          </CardContent>
-        </Card>
-      </div>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <TopPerformers
+          performers={topPerformers}
+          rankChanges={[]}
+          showRankAnimation={false}
+          sortBy={sortBy}
+        />
 
-      {/* Navigation cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {cards.map((card) => (
-          <Link key={card.title} to={card.href}>
-            <Card className="hover:bg-muted/50 transition-colors cursor-pointer group h-full">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                <card.icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{card.value}</div>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-xs text-muted-foreground">{card.description}</p>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+        <AnimatedLeaderboardTable
+          salesReps={salesReps}
+          className="bg-card rounded-lg border"
+        />
+
+        <PerformanceStats stats={stats} />
       </div>
     </div>
   );
