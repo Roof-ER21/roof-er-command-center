@@ -65,8 +65,12 @@ export function AuthLayout() {
       </div>
 
       {/* Right side - Auth form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 pt-16">
         <div className="w-full max-w-md">
+          {/* Logo above login card */}
+          <div className="flex justify-center mb-8">
+            <img src="/logo.png" alt="Roof ER Command Center" className="w-24 h-24 object-contain" />
+          </div>
           <Outlet />
         </div>
       </div>
