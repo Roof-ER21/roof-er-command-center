@@ -228,11 +228,6 @@ export function AppShell() {
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
-            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">RE</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
@@ -245,6 +240,9 @@ export function AppShell() {
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <Bell className="h-4 w-4" />
             </Button>
+          </div>
+          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+            <span className="text-primary-foreground font-bold text-xs">RE</span>
           </div>
         </div>
         {/* Mobile breadcrumb */}
@@ -485,7 +483,6 @@ export function AppShell() {
       >
         {/* Top bar (desktop) */}
         <header className="hidden lg:flex items-center justify-between h-16 px-6 border-b bg-background">
-          <Breadcrumb />
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -500,6 +497,7 @@ export function AppShell() {
               <Bell className="h-5 w-5" />
             </Button>
           </div>
+          <Breadcrumb />
         </header>
 
         {/* Page content */}
