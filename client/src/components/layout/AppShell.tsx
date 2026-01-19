@@ -228,6 +228,9 @@ export function AppShell() {
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
+            <img src="/logo.png" alt="Roof ER" className="w-8 h-8 rounded-lg object-contain" />
+          </div>
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
@@ -241,7 +244,6 @@ export function AppShell() {
               <Bell className="h-4 w-4" />
             </Button>
           </div>
-          <img src="/logo.png" alt="Roof ER" className="w-8 h-8 rounded-lg object-contain" />
         </div>
         {/* Mobile breadcrumb */}
         <div className="px-3 pb-2">
@@ -479,6 +481,7 @@ export function AppShell() {
       >
         {/* Top bar (desktop) */}
         <header className="hidden lg:flex items-center justify-between h-16 px-6 border-b bg-background">
+          <Breadcrumb />
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -493,7 +496,6 @@ export function AppShell() {
               <Bell className="h-5 w-5" />
             </Button>
           </div>
-          <Breadcrumb />
         </header>
 
         {/* Page content */}
