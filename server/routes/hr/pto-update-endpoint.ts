@@ -9,6 +9,7 @@ import { ptoRequests, users } from "../../../shared/schema";
 import { eq } from "drizzle-orm";
 import { sendPTOApprovalEmail, sendPTODenialEmail } from "../../services/email";
 import { deductPtoBalance, restorePtoBalance } from "../../services/pto-balance";
+import { selectUserColumns } from "../../utils/user-select.js";
 
 // This code should replace the existing router.patch("/pto/:id", ...) in index.ts
 // Starting from line ~774
@@ -176,7 +177,7 @@ export async function updatePTORequest(req: Request, res: Response) {
     // STEP 4: Send email notification to employee
     // ========================================================================
     try {
-      const [employee] = await db.select().from(users).where(eq(users.id, updated.employeeId)).limit(1);
+      const [employee] = await db.select(selectUserColumns()).from(users).where(eq(users.id, updated.employeeId)).limit(1);
 
       if (employee && req.user) {
         const approver = {

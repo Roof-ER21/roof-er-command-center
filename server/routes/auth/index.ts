@@ -5,6 +5,7 @@ import { db } from "../../db.js";
 import { users, sessions } from "../../../shared/schema.js";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../../middleware/auth.js";
+import { selectUserColumns, selectUserIdEmail } from "../../utils/user-select.js";
 
 const router = Router();
 
@@ -16,7 +17,7 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, error: "Not authenticated" });
     }
 
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId));
     if (!user) {
       return res.status(401).json({ success: false, error: "User not found" });
     }
@@ -39,7 +40,7 @@ router.post("/login", async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: "Email and password are required" });
     }
 
-    const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.email, email.toLowerCase()));
     if (!user) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
@@ -83,13 +84,13 @@ router.post("/pin-login", async (req: Request, res: Response) => {
     // If userId is provided, look up specific user
     let user;
     if (userId) {
-      const [foundUser] = await db.select().from(users).where(
+      const [foundUser] = await db.select(selectUserColumns()).from(users).where(
         and(eq(users.id, userId), eq(users.pinHash, pinHash))
       );
       user = foundUser;
     } else {
       // Find user by PIN hash
-      const [foundUser] = await db.select().from(users).where(eq(users.pinHash, pinHash));
+      const [foundUser] = await db.select(selectUserColumns()).from(users).where(eq(users.pinHash, pinHash));
       user = foundUser;
     }
 
@@ -144,7 +145,7 @@ router.post("/register", requireAuth, async (req: Request, res: Response) => {
     }
 
     // Check if email exists
-    const existing = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    const existing = await db.select(selectUserIdEmail()).from(users).where(eq(users.email, email.toLowerCase()));
     if (existing.length > 0) {
       return res.status(400).json({ success: false, message: "Email already exists" });
     }

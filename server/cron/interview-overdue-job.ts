@@ -8,6 +8,7 @@ import {
 import { eq, and, lt } from 'drizzle-orm';
 import { executeStatusAutomation } from '../services/candidate-status-automation.js';
 import { sendEmail } from '../services/email.js';
+import { selectUserColumns } from '../utils/user-select.js';
 
 /**
  * Interview Overdue Job
@@ -166,7 +167,7 @@ async function sendEscalationEmail(
   console.log(`⚠️  Escalation: Interview #${interview.id} (3+ days overdue)`);
 
   // Get HR admins
-  const hrAdmins = await db.select().from(users)
+  const hrAdmins = await db.select(selectUserColumns()).from(users)
     .where(eq(users.hasHRAccess, true));
 
   if (hrAdmins.length === 0) {

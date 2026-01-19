@@ -11,6 +11,7 @@ import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { sendWelcomeEmail } from './email.js';
 import type { Candidate } from '../../shared/schema.js';
+import { selectUserColumns } from '../utils/user-select.js';
 
 /**
  * HIRE Automation Chain
@@ -160,7 +161,7 @@ async function createUserAccount(candidate: Candidate, data: HireData) {
   const normalizedRole = data.role.toUpperCase();
 
   // Check if user already exists
-  const existing = await db.select().from(users)
+  const existing = await db.select(selectUserColumns()).from(users)
     .where(eq(users.email, candidate.email.toLowerCase()))
     .limit(1);
 

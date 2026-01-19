@@ -11,6 +11,7 @@ import {
 } from "../../../shared/schema.js";
 import { eq, desc, sql, and, gte } from "drizzle-orm";
 import { wsHandlers } from "../../index.js";
+import { selectUserColumns } from "../../utils/user-select.js";
 
 const router = Router();
 
@@ -515,7 +516,7 @@ async function checkSalesAchievements(userId: number, stats: { monthlyRevenue: n
 
           // Broadcast achievement
           if (wsHandlers?.leaderboard) {
-            const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+            const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId)).limit(1);
             wsHandlers.leaderboard.celebrateAchievement({
               userId,
               userName: user ? `${user.firstName} ${user.lastName}` : 'Unknown',

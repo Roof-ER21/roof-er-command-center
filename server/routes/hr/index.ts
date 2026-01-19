@@ -89,6 +89,7 @@ import {
 } from "../../services/pto-calendar.js";
 import { calculateBusinessDays } from "../../services/business-days.js";
 import { validatePTORequest, calculatePTODays } from "../../services/pto-validation.js";
+import { selectUserColumns } from "../../utils/user-select.js";
 
 const router = Router();
 const adminRoles = new Set([
@@ -280,13 +281,13 @@ router.post("/employees", async (req: Request, res: Response) => {
     }
 
     const normalizedEmail = email.toLowerCase();
-    const existing = await db.select().from(users).where(eq(users.email, normalizedEmail));
+    const existing = await db.select(selectUserColumns()).from(users).where(eq(users.email, normalizedEmail));
     if (existing.length > 0) {
       return res.status(400).json({ error: "Email already exists" });
     }
 
     if (username) {
-      const existingUsername = await db.select().from(users).where(eq(users.username, username));
+      const existingUsername = await db.select(selectUserColumns()).from(users).where(eq(users.username, username));
       if (existingUsername.length > 0) {
         return res.status(400).json({ error: "Username already exists" });
       }
@@ -378,14 +379,14 @@ router.patch("/employees/:id", async (req: Request, res: Response) => {
 
     if (email) {
       const normalizedEmail = email.toLowerCase();
-      const existing = await db.select().from(users).where(eq(users.email, normalizedEmail));
+      const existing = await db.select(selectUserColumns()).from(users).where(eq(users.email, normalizedEmail));
       if (existing.length > 0 && existing[0]?.id !== employeeId) {
         return res.status(400).json({ error: "Email already exists" });
       }
     }
 
     if (username) {
-      const existingUsername = await db.select().from(users).where(eq(users.username, username));
+      const existingUsername = await db.select(selectUserColumns()).from(users).where(eq(users.username, username));
       if (existingUsername.length > 0 && existingUsername[0]?.id !== employeeId) {
         return res.status(400).json({ error: "Username already exists" });
       }
@@ -658,7 +659,7 @@ router.post("/pto", async (req: Request, res: Response) => {
     // Send email notification to appropriate approvers
     try {
       // Get employee details
-      const [employee] = await db.select().from(users).where(eq(users.id, employeeId)).limit(1);
+      const [employee] = await db.select(selectUserColumns()).from(users).where(eq(users.id, employeeId)).limit(1);
 
       // Get designated approvers for this employee
       const approvers = await getApproverUsers(employeeId);
@@ -725,7 +726,7 @@ router.post("/pto/admin/create", async (req: Request, res: Response) => {
     }
 
     // Validate employee exists
-    const [employee] = await db.select().from(users).where(eq(users.id, employeeId)).limit(1);
+    const [employee] = await db.select(selectUserColumns()).from(users).where(eq(users.id, employeeId)).limit(1);
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
     }
@@ -940,7 +941,7 @@ router.patch("/pto/:id", async (req: Request, res: Response) => {
     // Send email notification to employee
     try {
       // Get employee details
-      const [employee] = await db.select().from(users).where(eq(users.id, updated.employeeId)).limit(1);
+      const [employee] = await db.select(selectUserColumns()).from(users).where(eq(users.id, updated.employeeId)).limit(1);
 
       if (employee && req.user) {
         const approver = {

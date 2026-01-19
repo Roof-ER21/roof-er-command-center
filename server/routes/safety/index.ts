@@ -9,6 +9,7 @@ import {
   sendSafetyIncidentResolvedEmail,
 } from '../../services/safety-email.js';
 import { requireAuth } from '../../middleware/auth.js';
+import { selectUserColumns } from '../../utils/user-select.js';
 
 const router = Router();
 
@@ -147,7 +148,7 @@ router.post('/incidents', requireAuth, async (req, res) => {
     }).returning();
 
     // Fetch reporter details
-    const [reporter] = await db.select().from(users).where(eq(users.id, userId));
+    const [reporter] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId));
 
     // Send notification emails based on severity
     if (severity === 'critical') {
@@ -162,7 +163,7 @@ router.post('/incidents', requireAuth, async (req, res) => {
     } else if (severity === 'high') {
       // Send to assigned person if available
       if (assignedTo) {
-        const [assignee] = await db.select().from(users).where(eq(users.id, assignedTo));
+        const [assignee] = await db.select(selectUserColumns()).from(users).where(eq(users.id, assignedTo));
         if (assignee) {
           await sendSafetyIncidentReportedEmail(incident, reporter, assignee);
         }
@@ -171,7 +172,7 @@ router.post('/incidents', requireAuth, async (req, res) => {
 
     // If assigned, send assignment email
     if (assignedTo) {
-      const [assignee] = await db.select().from(users).where(eq(users.id, assignedTo));
+      const [assignee] = await db.select(selectUserColumns()).from(users).where(eq(users.id, assignedTo));
       if (assignee) {
         await sendSafetyIncidentAssignedEmail(incident, assignee);
       }
@@ -222,13 +223,13 @@ router.get('/incidents/:id', requireAuth, async (req, res) => {
     // Fetch assignee separately if exists
     let assignee = null;
     if (result.incident.assignedTo) {
-      [assignee] = await db.select().from(users).where(eq(users.id, result.incident.assignedTo));
+      [assignee] = await db.select(selectUserColumns()).from(users).where(eq(users.id, result.incident.assignedTo));
     }
 
     // Fetch resolver separately if exists
     let resolver = null;
     if (result.incident.resolvedBy) {
-      [resolver] = await db.select().from(users).where(eq(users.id, result.incident.resolvedBy));
+      [resolver] = await db.select(selectUserColumns()).from(users).where(eq(users.id, result.incident.resolvedBy));
     }
 
     res.json({
@@ -302,17 +303,17 @@ router.patch('/incidents/:id', requireAuth, async (req, res) => {
 
     // Send emails if status changed or assigned
     if (assignedTo !== undefined && assignedTo !== null) {
-      const [assignee] = await db.select().from(users).where(eq(users.id, assignedTo));
+      const [assignee] = await db.select(selectUserColumns()).from(users).where(eq(users.id, assignedTo));
       if (assignee) {
         await sendSafetyIncidentAssignedEmail(updatedIncident, assignee);
       }
     }
 
     if (status === 'resolved' || status === 'closed') {
-      const [resolver] = await db.select().from(users).where(eq(users.id, userId));
+      const [resolver] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId));
       if (resolver) {
         // Notify reporter
-        const [reporter] = await db.select().from(users).where(eq(users.id, updatedIncident.reportedBy));
+        const [reporter] = await db.select(selectUserColumns()).from(users).where(eq(users.id, updatedIncident.reportedBy));
         if (reporter) {
           await sendSafetyIncidentResolvedEmail(updatedIncident, resolver, reporter);
         }

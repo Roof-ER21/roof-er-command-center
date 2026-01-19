@@ -15,6 +15,7 @@ import {
   broadcastBadgeAchievement,
   broadcastTrainingMilestone,
 } from "../../utils/achievement-broadcaster.js";
+import { selectUserColumns } from "../../utils/user-select.js";
 
 const router = Router();
 
@@ -100,7 +101,7 @@ router.post("/award-xp", async (req: Request, res: Response) => {
 
     // Broadcast level up event
     if (leveledUp) {
-      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId)).limit(1);
       const userName = user ? (user.username || `User ${userId}`) : `User ${userId}`;
 
       broadcastTrainingMilestone({
@@ -117,7 +118,7 @@ router.post("/award-xp", async (req: Request, res: Response) => {
     const previousMilestone = Math.floor(userProgress.totalXP / 1000) * 1000;
     const newMilestone = Math.floor(newTotalXP / 1000) * 1000;
     if (newMilestone > previousMilestone && newMilestone > 0) {
-      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId)).limit(1);
       const userName = user ? (user.username || `User ${userId}`) : `User ${userId}`;
 
       broadcastTrainingMilestone({
@@ -322,7 +323,7 @@ router.post("/check-streak", async (req: Request, res: Response) => {
 
     // Broadcast streak milestones (every 7 days)
     if (newStreak % 7 === 0 && newStreak > 0) {
-      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId)).limit(1);
       const userName = user ? (user.username || `User ${userId}`) : `User ${userId}`;
 
       broadcastTrainingMilestone({
@@ -486,7 +487,7 @@ async function checkAchievements(
       newAchievements.push(achievement);
 
       // Broadcast badge achievement
-      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId)).limit(1);
       const userName = user ? (user.username || `User ${userId}`) : `User ${userId}`;
 
       broadcastBadgeAchievement({
@@ -525,7 +526,7 @@ async function checkStreakAchievements(userId: number, currentStreak: number): P
       });
 
       // Broadcast streak badge achievement
-      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId)).limit(1);
       const userName = user ? (user.username || `User ${userId}`) : `User ${userId}`;
 
       broadcastBadgeAchievement({

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { db } from "../db.js";
 import { users } from "../../shared/schema.js";
 import { eq } from "drizzle-orm";
+import { selectUserColumns } from "../utils/user-select.js";
 
 // Extend Express Request type
 declare global {
@@ -21,7 +22,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       return res.status(401).json({ success: false, error: "Not authenticated" });
     }
 
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId));
 
     if (!user) {
       return res.status(401).json({ success: false, error: "User not found" });

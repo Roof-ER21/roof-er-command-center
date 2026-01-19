@@ -11,6 +11,7 @@ import {
 import { eq, inArray, and } from "drizzle-orm";
 import { PTO_POLICY, getPtoAllocation } from "../../../shared/constants/pto-policy";
 import { recalculatePtoBalance, getPtoBalance, getTypedBalance } from "../../services/pto-balance";
+import { selectUserColumns } from "../../utils/user-select.js";
 
 const router = Router();
 
@@ -154,7 +155,7 @@ router.put("/individual-policies/:id", async (req, res) => {
 // Reset all balances
 router.post("/admin/reset-all", async (req, res) => {
   try {
-    const allActiveUsers = await db.select().from(users).where(eq(users.isActive, true));
+    const allActiveUsers = await db.select(selectUserColumns()).from(users).where(eq(users.isActive, true));
 
     const results = { updated: 0, created: 0 };
 
@@ -227,7 +228,7 @@ router.post("/balance/recalculate/:employeeId", async (req, res) => {
 router.post("/balance/recalculate-all", async (req, res) => {
   try {
     const year = req.body.year ? parseInt(req.body.year) : undefined;
-    const allUsers = await db.select().from(users).where(eq(users.isActive, true));
+    const allUsers = await db.select(selectUserColumns()).from(users).where(eq(users.isActive, true));
 
     const results = [];
     let errors = 0;

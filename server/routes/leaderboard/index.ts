@@ -19,6 +19,7 @@ import { broadcastContestAchievement } from "../../utils/achievement-broadcaster
 import { wsHandlers } from "../../index.js";
 import { detectMilestones, awardMilestoneBadge, type SalesRepStats } from "./milestones.js";
 import badgeRoutes from "./badge-routes.js";
+import { selectUserColumns } from "../../utils/user-select.js";
 
 const router = Router();
 
@@ -324,7 +325,7 @@ router.post("/contests/:id/payout", async (req: Request, res: Response) => {
         const [rep] = await db.select().from(salesReps).where(eq(salesReps.id, participant.salesRepId)).limit(1);
 
         if (rep && rep.userId) {
-          const [user] = await db.select().from(users).where(eq(users.id, rep.userId)).limit(1);
+          const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, rep.userId)).limit(1);
           const name = user ? (user.username || rep.name) : rep.name;
 
           broadcastContestAchievement({

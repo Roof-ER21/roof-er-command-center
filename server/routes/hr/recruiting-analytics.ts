@@ -9,6 +9,7 @@ import {
 } from "../../../shared/schema";
 import { eq, and, desc, sql, inArray, gte, lte } from "drizzle-orm";
 import { requireAuth } from "../../middleware/auth";
+import { selectUserColumns } from "../../utils/user-select.js";
 
 const router = Router();
 
@@ -178,7 +179,7 @@ router.get("/recruiters", async (req, res) => {
     ];
 
     const filteredCandidates = await db.select().from(candidates).where(and(...filters));
-    const allUsers = await db.select().from(users);
+    const allUsers = await db.select(selectUserColumns()).from(users);
 
     const assigneeMap = new Map<number | null, { assigned: number; hired: number; totalDays: number }>();
 

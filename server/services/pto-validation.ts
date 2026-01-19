@@ -7,6 +7,7 @@ import { db } from "../db.js";
 import { users, ptoRequests } from "../../shared/schema.js";
 import { eq, and, or, sql } from "drizzle-orm";
 import { calculateBusinessDays } from "./business-days.js";
+import { selectUserColumns } from "../utils/user-select.js";
 
 export interface PTOValidationResult {
   isValid: boolean;
@@ -19,7 +20,7 @@ export interface PTOValidationResult {
  * Blocks 1099, CONTRACTOR, SUB_CONTRACTOR, and Sales department
  */
 export async function validateEmployeeEligibility(employeeId: number): Promise<PTOValidationResult> {
-  const [employee] = await db.select().from(users).where(eq(users.id, employeeId)).limit(1);
+  const [employee] = await db.select(selectUserColumns()).from(users).where(eq(users.id, employeeId)).limit(1);
 
   if (!employee) {
     return {

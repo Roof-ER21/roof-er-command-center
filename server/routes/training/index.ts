@@ -16,6 +16,7 @@ import {
 import { eq, desc, and, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { broadcastTrainingMilestone } from "../../utils/achievement-broadcaster.js";
+import { selectUserColumns } from "../../utils/user-select.js";
 
 const router = Router();
 
@@ -299,11 +300,7 @@ router.get("/certificates/:certificateId/verify", async (req: Request, res: Resp
 
     // Get user data
     const [user] = await db
-      .select({
-        firstName: users.firstName,
-        lastName: users.lastName,
-        email: users.email
-      })
+      .select(selectUserColumns())
       .from(users)
       .where(eq(users.id, certificate.userId))
       .limit(1);
@@ -344,7 +341,7 @@ router.get("/dashboard", async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
 
     // Get user stats
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId));
     const [streak] = await db.select().from(trainingStreaks).where(eq(trainingStreaks.userId, userId));
     
     // Get completion stats
@@ -548,7 +545,7 @@ router.post("/modules/:moduleId/complete", async (req: Request, res: Response) =
 
     // Award XP to user
     const [user] = await db
-      .select()
+      .select(selectUserColumns())
       .from(users)
       .where(eq(users.id, userId));
 
@@ -998,7 +995,7 @@ router.post("/certificates/generate", async (req: Request, res: Response) => {
     }
 
     // Get user data
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId));
     if (!user) {
       return res.status(404).json({ success: false, error: "User not found" });
     }
@@ -1111,7 +1108,7 @@ router.get("/certificates", async (req: Request, res: Response) => {
       .orderBy(desc(trainingCertificates.issuedAt));
 
     // Get user data
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId));
 
     res.json({
       success: true,
@@ -1162,7 +1159,7 @@ router.get("/certificates/:certificateId/download", async (req: Request, res: Re
 
     // Get user data
     const [user] = await db
-      .select()
+      .select(selectUserColumns())
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);

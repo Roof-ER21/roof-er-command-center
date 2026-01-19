@@ -1,12 +1,13 @@
 import { db } from "../db.js";
-import { 
-  users, 
-  salesReps, 
-  ptoPolicies, 
-  trainingUserProgress, 
-  onboardingTasks 
+import {
+  users,
+  salesReps,
+  ptoPolicies,
+  trainingUserProgress,
+  onboardingTasks
 } from "../../shared/schema.js";
 import { eq, and, ne } from "drizzle-orm";
+import { selectUserColumns } from "../utils/user-select.js";
 
 /**
  * Builds a rich context string about the current user
@@ -15,7 +16,7 @@ import { eq, and, ne } from "drizzle-orm";
 export async function getUnifiedUserContext(userId: number): Promise<string> {
   try {
     // 1. Fetch User Identity
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    const [user] = await db.select(selectUserColumns()).from(users).where(eq(users.id, userId));
     if (!user) return "";
 
     // 2. Fetch Module-Specific Data in Parallel

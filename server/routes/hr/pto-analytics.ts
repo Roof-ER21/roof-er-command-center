@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../../db";
 import { ptoRequests, users } from "../../../shared/schema";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { selectUserColumns } from "../../utils/user-select.js";
 
 const router = Router();
 
@@ -37,7 +38,7 @@ router.get("/overview", async (req, res) => {
 router.get("/usage", async (req, res) => {
   try {
     const approvedRequests = await db.select().from(ptoRequests).where(eq(ptoRequests.status, "APPROVED"));
-    const allUsers = await db.select().from(users);
+    const allUsers = await db.select(selectUserColumns()).from(users);
 
     // Exclude exempt requests from usage analytics
     const usageByEmployee = approvedRequests.reduce((acc, r) => {
