@@ -403,27 +403,6 @@ function generatePlaceholderResponse(message: string): string {
   return "AI processing...";
 }
 
-// Get email templates
-router.get("/email/templates", async (req: Request, res: Response) => {
-  try {
-    res.json({
-      success: true,
-      data: {
-        templates: [
-          { id: 1, name: "Initial Contact", category: "outreach" },
-          { id: 2, name: "Follow Up", category: "outreach" },
-          { id: 3, name: "Insurance Update", category: "claims" },
-          { id: 4, name: "Scheduling", category: "scheduling" },
-          { id: 5, name: "Thank You", category: "follow-up" },
-        ],
-      }
-    });
-  } catch (error) {
-    console.error("Email templates error:", error);
-    res.status(500).json({ success: false, error: "Failed to fetch templates" });
-  }
-});
-
 // Generate email with AI
 router.post("/email/generate", async (req: Request, res: Response) => {
   try {
