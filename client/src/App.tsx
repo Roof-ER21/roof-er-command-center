@@ -21,6 +21,7 @@ import { RecruitingPage } from "@/modules/hr/RecruitingPage";
 import { ResumeUploaderPage } from "@/modules/hr/pages/ResumeUploaderPage";
 import { ContractsPage } from "@/modules/hr/pages/ContractsPage";
 import { EquipmentPage } from "@/modules/hr/pages/EquipmentPage";
+import { InventoryPage } from "@/modules/hr/pages/InventoryPage";
 import { OnboardingPage } from "@/modules/hr/pages/OnboardingPage";
 import { EmployeeDetailPage } from "@/modules/hr/pages/EmployeeDetailPage";
 import { DocumentsPage } from "@/modules/hr/pages/DocumentsPage";
@@ -159,6 +160,7 @@ export default function App() {
           <Route path="/hr/recruiting" element={<ProtectedRoute requiredModule="hr"><RecruitingPage /></ProtectedRoute>} />
           <Route path="/hr/contracts" element={<ProtectedRoute requiredModule="hr"><ContractsPage /></ProtectedRoute>} />
           <Route path="/hr/equipment" element={<ProtectedRoute requiredModule="hr"><EquipmentPage /></ProtectedRoute>} />
+          <Route path="/hr/inventory" element={<ProtectedRoute requiredModule="hr"><InventoryPage /></ProtectedRoute>} />
           <Route path="/hr/equipment-agreement" element={<ProtectedRoute requiredModule="hr"><EquipmentPage /></ProtectedRoute>} />
           <Route path="/hr/equipment-checklist" element={<ProtectedRoute requiredModule="hr"><EquipmentPage /></ProtectedRoute>} />
           <Route path="/hr/equipment-return" element={<ProtectedRoute requiredModule="hr"><EquipmentPage /></ProtectedRoute>} />

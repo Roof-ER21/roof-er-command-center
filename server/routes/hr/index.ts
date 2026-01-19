@@ -16,6 +16,7 @@ import {
   interviews,
   interviewScorecards,
   equipment,
+  inventory,
   contracts,
   onboardingTasks,
   onboardingRequirements,
@@ -2186,6 +2187,281 @@ router.post("/equipment", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Create equipment error:", error);
     res.status(500).json({ error: "Failed to create equipment" });
+  }
+});
+
+// ============================================================================
+// INVENTORY ROUTES - Bulk consumable items (shirts, supplies, etc.)
+// ============================================================================
+
+// Get all inventory with optional filters
+router.get("/inventory", async (req: Request, res: Response) => {
+  try {
+    const { category, lowStock } = req.query;
+
+    let query = db.select().from(inventory);
+    const conditions = [];
+
+    // Filter by category if provided
+    if (category && typeof category === 'string') {
+      conditions.push(eq(inventory.category, category as any));
+    }
+
+    // Filter for low stock items if requested
+    if (lowStock === 'true') {
+      conditions.push(
+        sql`${inventory.quantity} <= COALESCE(${inventory.reorderThreshold}, 0)`
+      );
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    const items = await query.orderBy(desc(inventory.lastUpdated));
+    res.json(items);
+  } catch (error) {
+    console.error("Inventory fetch error:", error);
+    res.status(500).json({ error: "Failed to fetch inventory" });
+  }
+});
+
+// Get inventory statistics by category
+router.get("/inventory/stats", async (req: Request, res: Response) => {
+  try {
+    const stats = await db
+      .select({
+        category: inventory.category,
+        totalItems: sql<number>`count(*)`,
+        totalQuantity: sql<number>`sum(${inventory.quantity})`,
+        lowStockCount: sql<number>`sum(case when ${inventory.quantity} <= COALESCE(${inventory.reorderThreshold}, 0) then 1 else 0 end)`,
+      })
+      .from(inventory)
+      .groupBy(inventory.category);
+
+    res.json(stats);
+  } catch (error) {
+    console.error("Inventory stats error:", error);
+    res.status(500).json({ error: "Failed to fetch inventory statistics" });
+  }
+});
+
+// Get single inventory item
+router.get("/inventory/:id", async (req: Request, res: Response) => {
+  try {
+    const itemId = parseInt(req.params.id, 10);
+    if (Number.isNaN(itemId)) {
+      return res.status(400).json({ error: "Invalid inventory item ID" });
+    }
+
+    const [item] = await db
+      .select()
+      .from(inventory)
+      .where(eq(inventory.id, itemId))
+      .limit(1);
+
+    if (!item) {
+      return res.status(404).json({ error: "Inventory item not found" });
+    }
+
+    res.json(item);
+  } catch (error) {
+    console.error("Inventory item fetch error:", error);
+    res.status(500).json({ error: "Failed to fetch inventory item" });
+  }
+});
+
+// Create new inventory item
+router.post("/inventory", async (req: Request, res: Response) => {
+  try {
+    const {
+      name,
+      category,
+      color,
+      size,
+      quantity,
+      location,
+      notes,
+      reorderThreshold,
+    } = req.body;
+
+    if (!name || !category) {
+      return res.status(400).json({ error: "Name and category are required" });
+    }
+
+    if (quantity !== undefined && (typeof quantity !== 'number' || quantity < 0)) {
+      return res.status(400).json({ error: "Quantity must be a non-negative number" });
+    }
+
+    const [newItem] = await db
+      .insert(inventory)
+      .values({
+        name,
+        category,
+        color: color || null,
+        size: size || null,
+        quantity: quantity || 0,
+        location: location || null,
+        notes: notes || null,
+        reorderThreshold: reorderThreshold || null,
+      })
+      .returning();
+
+    res.status(201).json(newItem);
+  } catch (error) {
+    console.error("Create inventory error:", error);
+    res.status(500).json({ error: "Failed to create inventory item" });
+  }
+});
+
+// Update inventory item
+router.put("/inventory/:id", async (req: Request, res: Response) => {
+  try {
+    const itemId = parseInt(req.params.id, 10);
+    if (Number.isNaN(itemId)) {
+      return res.status(400).json({ error: "Invalid inventory item ID" });
+    }
+
+    const {
+      name,
+      category,
+      color,
+      size,
+      quantity,
+      location,
+      notes,
+      reorderThreshold,
+    } = req.body;
+
+    if (quantity !== undefined && (typeof quantity !== 'number' || quantity < 0)) {
+      return res.status(400).json({ error: "Quantity must be a non-negative number" });
+    }
+
+    const updateData: Record<string, any> = {
+      lastUpdated: new Date(),
+    };
+
+    if (name !== undefined) updateData.name = name;
+    if (category !== undefined) updateData.category = category;
+    if (color !== undefined) updateData.color = color;
+    if (size !== undefined) updateData.size = size;
+    if (quantity !== undefined) updateData.quantity = quantity;
+    if (location !== undefined) updateData.location = location;
+    if (notes !== undefined) updateData.notes = notes;
+    if (reorderThreshold !== undefined) updateData.reorderThreshold = reorderThreshold;
+
+    const [updated] = await db
+      .update(inventory)
+      .set(updateData)
+      .where(eq(inventory.id, itemId))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Inventory item not found" });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Update inventory error:", error);
+    res.status(500).json({ error: "Failed to update inventory item" });
+  }
+});
+
+// Delete inventory item
+router.delete("/inventory/:id", async (req: Request, res: Response) => {
+  try {
+    const itemId = parseInt(req.params.id, 10);
+    if (Number.isNaN(itemId)) {
+      return res.status(400).json({ error: "Invalid inventory item ID" });
+    }
+
+    const [deleted] = await db
+      .delete(inventory)
+      .where(eq(inventory.id, itemId))
+      .returning();
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Inventory item not found" });
+    }
+
+    res.json({ success: true, message: "Inventory item deleted successfully" });
+  } catch (error) {
+    console.error("Delete inventory error:", error);
+    res.status(500).json({ error: "Failed to delete inventory item" });
+  }
+});
+
+// Bulk create/update inventory items
+router.post("/inventory/bulk", async (req: Request, res: Response) => {
+  try {
+    const { items } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "Items array is required and must not be empty" });
+    }
+
+    // Validate all items
+    for (const item of items) {
+      if (!item.name || !item.category) {
+        return res.status(400).json({ error: "Each item must have name and category" });
+      }
+      if (item.quantity !== undefined && (typeof item.quantity !== 'number' || item.quantity < 0)) {
+        return res.status(400).json({ error: "Quantity must be a non-negative number" });
+      }
+    }
+
+    // Process items
+    const results = [];
+    for (const item of items) {
+      if (item.id) {
+        // Update existing item
+        const [updated] = await db
+          .update(inventory)
+          .set({
+            name: item.name,
+            category: item.category,
+            color: item.color || null,
+            size: item.size || null,
+            quantity: item.quantity || 0,
+            location: item.location || null,
+            notes: item.notes || null,
+            reorderThreshold: item.reorderThreshold || null,
+            lastUpdated: new Date(),
+          })
+          .where(eq(inventory.id, item.id))
+          .returning();
+
+        if (updated) {
+          results.push({ action: 'updated', item: updated });
+        }
+      } else {
+        // Create new item
+        const [created] = await db
+          .insert(inventory)
+          .values({
+            name: item.name,
+            category: item.category,
+            color: item.color || null,
+            size: item.size || null,
+            quantity: item.quantity || 0,
+            location: item.location || null,
+            notes: item.notes || null,
+            reorderThreshold: item.reorderThreshold || null,
+          })
+          .returning();
+
+        results.push({ action: 'created', item: created });
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Processed ${results.length} items`,
+      results,
+    });
+  } catch (error) {
+    console.error("Bulk inventory operation error:", error);
+    res.status(500).json({ error: "Failed to process bulk inventory operation" });
   }
 });
 

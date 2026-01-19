@@ -250,6 +250,20 @@ export const equipment = pgTable('equipment', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const inventory = pgTable('inventory', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  category: text('category').$type<'apparel' | 'office_supplies' | 'insurance_team' | 'retail_team' | 'daily_use' | 'other'>().notNull(),
+  color: text('color'),
+  size: text('size'),
+  quantity: integer('quantity').notNull().default(0),
+  location: text('location'),
+  notes: text('notes'),
+  reorderThreshold: integer('reorder_threshold'), // optional low stock alert
+  lastUpdated: timestamp('last_updated').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const onboardingTasks = pgTable('onboarding_tasks', {
   id: serial('id').primaryKey(),
   employeeId: integer('employee_id').notNull().references(() => users.id),
@@ -1378,6 +1392,8 @@ export type EmployeeNote = typeof employeeNotes.$inferSelect;
 export type HrAssignment = typeof hrAssignments.$inferSelect;
 export type Contract = typeof contracts.$inferSelect;
 export type Equipment = typeof equipment.$inferSelect;
+export type InventoryItem = typeof inventory.$inferSelect;
+export type NewInventoryItem = typeof inventory.$inferInsert;
 export type OnboardingTask = typeof onboardingTasks.$inferSelect;
 export type OnboardingRequirement = typeof onboardingRequirements.$inferSelect;
 export type NewOnboardingRequirement = typeof onboardingRequirements.$inferInsert;
