@@ -37,8 +37,14 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
-  // Skip API and WebSocket requests
   const url = new URL(event.request.url);
+
+  // Skip external URLs (fonts, analytics, etc.) - let browser handle them normally
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Skip API and WebSocket requests
   if (url.pathname.startsWith('/api') || url.pathname.startsWith('/socket.io')) {
     return;
   }

@@ -68,7 +68,10 @@ export function DocumentsPage() {
       }
 
       const result = await response.json();
-      return result.data || [];
+      // Ensure we always return an array
+      if (Array.isArray(result)) return result;
+      if (Array.isArray(result.data)) return result.data;
+      return [];
     },
   });
 
