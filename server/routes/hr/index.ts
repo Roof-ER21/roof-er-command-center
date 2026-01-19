@@ -15,6 +15,7 @@ import {
   equipment,
   contracts,
   onboardingTasks,
+  onboardingRequirements,
   documents,
   documentAcknowledgements,
   documentAssignments,
@@ -43,6 +44,17 @@ import { eq, desc, inArray, sql, and, gte, lte } from "drizzle-orm";
 import recruitingAnalyticsRoutes from "./recruiting-analytics";
 import ptoPoliciesRoutes from "./pto-policies";
 import ptoAnalyticsRoutes from "./pto-analytics";
+import {
+  sendCandidateStatusEmail,
+  sendInterviewScheduledEmail,
+  sendOfferEmail,
+} from "../../services/email.js";
+import {
+  createOnboardingRequirements,
+  getRequirementsByCategory,
+  calculateCompletionPercentage,
+  isRequirementOverdue,
+} from "../../services/onboarding-requirements.js";
 
 const router = Router();
 const adminRoles = new Set([
@@ -273,6 +285,16 @@ router.post("/employees", async (req: Request, res: Response) => {
       hasLeaderboardAccess: typeof hasLeaderboardAccess === "boolean" ? hasLeaderboardAccess : undefined,
       isActive: typeof isActive === "boolean" ? isActive : true,
     }).returning();
+
+    // Auto-create onboarding requirements based on employment type
+    if (employmentType === 'W2' || employmentType === '1099') {
+      try {
+        await createOnboardingRequirements(newUser.id, employmentType);
+      } catch (error) {
+        console.error("Failed to create onboarding requirements:", error);
+        // Don't fail the whole request if onboarding requirements fail
+      }
+    }
 
     const { passwordHash: _, pinHash, ...safeUser } = newUser;
     res.status(201).json(safeUser);
@@ -734,6 +756,15 @@ router.patch("/candidates/:id", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid candidate id" });
     }
 
+    // Get current candidate data to check for status changes
+    const [currentCandidate] = await db.select().from(candidates)
+      .where(eq(candidates.id, candidateId))
+      .limit(1);
+
+    if (!currentCandidate) {
+      return res.status(404).json({ error: "Candidate not found" });
+    }
+
     const {
       firstName,
       lastName,
@@ -776,6 +807,22 @@ router.patch("/candidates/:id", async (req: Request, res: Response) => {
 
     if (!updated) {
       return res.status(404).json({ error: "Candidate not found" });
+    }
+
+    // Send email if status changed
+    if (status !== undefined && status !== currentCandidate.status) {
+      sendCandidateStatusEmail(updated, status, currentCandidate.status).catch(err => {
+        console.error('Failed to send candidate status email:', err);
+      });
+    }
+
+    // Send offer email if status changed to "offer"
+    if (status === 'offer' && currentCandidate.status !== 'offer') {
+      sendOfferEmail(updated, {
+        position: updated.position,
+      }).catch(err => {
+        console.error('Failed to send offer email:', err);
+      });
     }
 
     res.json(updated);
@@ -1018,6 +1065,148 @@ router.post("/candidates/bulk-assign", async (req: Request, res: Response) => {
   }
 });
 
+// AI Scoring - Score single candidate
+router.post("/candidates/:id/score", async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ error: "Invalid candidate ID" });
+    }
+
+    // Get candidate
+    const [candidate] = await db.select().from(candidates).where(eq(candidates.id, id));
+
+    if (!candidate) {
+      return res.status(404).json({ error: "Candidate not found" });
+    }
+
+    // Get active criteria
+    const criteria = await db
+      .select()
+      .from(hrAiCriteria)
+      .where(eq(hrAiCriteria.isActive, true))
+      .orderBy(hrAiCriteria.id);
+
+    if (criteria.length === 0) {
+      return res.status(400).json({
+        error: "No active scoring criteria found. Please configure criteria in Settings.",
+      });
+    }
+
+    // Import AI scoring service
+    const { AIScoringService } = await import('../../services/ai-scoring.js');
+    const scoringService = new AIScoringService();
+
+    // Score candidate
+    const result = await scoringService.scoreCandidate(candidate, criteria);
+
+    // Update candidate with score (convert 0-100 to 1-5 rating)
+    const rating = Math.max(1, Math.min(5, Math.round(result.overallScore / 20)));
+    await db
+      .update(candidates)
+      .set({
+        rating,
+        notes: candidate.notes
+          ? `${candidate.notes}\n\n[AI Score ${new Date().toLocaleDateString()}]: ${result.summary}`
+          : `[AI Score ${new Date().toLocaleDateString()}]: ${result.summary}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(candidates.id, id));
+
+    res.json({
+      success: true,
+      candidateId: id,
+      rating,
+      ...result,
+    });
+  } catch (error) {
+    console.error("AI scoring error:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Failed to score candidate",
+    });
+  }
+});
+
+// AI Scoring - Bulk score candidates
+router.post("/candidates/bulk-score", async (req: Request, res: Response) => {
+  try {
+    const { candidateIds } = req.body;
+
+    if (!Array.isArray(candidateIds) || candidateIds.length === 0) {
+      return res.status(400).json({ error: "Invalid candidate IDs. Must be a non-empty array." });
+    }
+
+    // Get candidates
+    const candidatesData = await db
+      .select()
+      .from(candidates)
+      .where(inArray(candidates.id, candidateIds.map(id => parseInt(id))));
+
+    if (candidatesData.length === 0) {
+      return res.status(404).json({ error: "No candidates found" });
+    }
+
+    // Get active criteria
+    const criteria = await db
+      .select()
+      .from(hrAiCriteria)
+      .where(eq(hrAiCriteria.isActive, true))
+      .orderBy(hrAiCriteria.id);
+
+    if (criteria.length === 0) {
+      return res.status(400).json({
+        error: "No active scoring criteria found. Please configure criteria in Settings.",
+      });
+    }
+
+    // Import AI scoring service
+    const { AIScoringService } = await import('../../services/ai-scoring.js');
+    const scoringService = new AIScoringService();
+
+    // Score all candidates
+    const results = await scoringService.scoreCandidates(candidatesData, criteria);
+
+    // Update candidates with scores
+    const updates = [];
+    for (const [candidateId, result] of results.entries()) {
+      const candidate = candidatesData.find(c => c.id === candidateId);
+      if (!candidate) continue;
+
+      const rating = Math.max(1, Math.min(5, Math.round(result.overallScore / 20)));
+
+      await db
+        .update(candidates)
+        .set({
+          rating,
+          notes: candidate.notes
+            ? `${candidate.notes}\n\n[AI Score ${new Date().toLocaleDateString()}]: ${result.summary}`
+            : `[AI Score ${new Date().toLocaleDateString()}]: ${result.summary}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(candidates.id, candidateId));
+
+      updates.push({
+        candidateId,
+        rating,
+        overallScore: result.overallScore,
+        summary: result.summary,
+      });
+    }
+
+    res.json({
+      success: true,
+      scored: updates.length,
+      results: updates,
+    });
+  } catch (error) {
+    console.error("Bulk AI scoring error:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Failed to score candidates",
+    });
+  }
+});
+
 // Interviews
 router.get("/interviews", async (req: Request, res: Response) => {
   try {
@@ -1127,6 +1316,17 @@ router.post("/interviews", async (req: Request, res: Response) => {
     await db.update(candidates)
       .set({ status: "interview", updatedAt: new Date() })
       .where(and(eq(candidates.id, parsedCandidateId), sql`${candidates.status} NOT IN ('hired', 'rejected')`));
+
+    // Send interview scheduled email
+    const [candidate] = await db.select().from(candidates)
+      .where(eq(candidates.id, parsedCandidateId))
+      .limit(1);
+
+    if (candidate) {
+      sendInterviewScheduledEmail(candidate, newInterview).catch(err => {
+        console.error('Failed to send interview scheduled email:', err);
+      });
+    }
 
     res.status(201).json(newInterview);
   } catch (error) {
@@ -3050,6 +3250,154 @@ router.patch("/onboarding/:checklistId/tasks/:taskId/toggle", async (req: Reques
   } catch (error) {
     console.error("Toggle onboarding task error:", error);
     res.status(500).json({ error: "Failed to update onboarding task" });
+  }
+});
+
+// ============================================================================
+// ONBOARDING REQUIREMENTS - W2 vs 1099 Differentiation
+// ============================================================================
+
+// Get onboarding requirements for an employee
+router.get("/onboarding/:employeeId/requirements", async (req: Request, res: Response) => {
+  try {
+    const employeeId = parseInt(req.params.employeeId);
+
+    if (Number.isNaN(employeeId)) {
+      return res.status(400).json({ error: "Invalid employee ID" });
+    }
+
+    // Get employee info
+    const [employee] = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      employmentType: users.employmentType,
+      hireDate: users.hireDate,
+    })
+      .from(users)
+      .where(eq(users.id, employeeId));
+
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    // Get requirements
+    const requirements = await db.select()
+      .from(onboardingRequirements)
+      .where(eq(onboardingRequirements.employeeId, employeeId))
+      .orderBy(onboardingRequirements.dueDate);
+
+    // Group by category
+    const grouped = getRequirementsByCategory(requirements);
+
+    // Calculate completion
+    const completionPercentage = calculateCompletionPercentage(requirements);
+
+    // Mark overdue requirements
+    const requirementsWithStatus = requirements.map((req) => ({
+      ...req,
+      isOverdue: isRequirementOverdue(req),
+    }));
+
+    res.json({
+      employee: {
+        id: employee.id,
+        name: `${employee.firstName} ${employee.lastName}`,
+        employmentType: employee.employmentType,
+        hireDate: employee.hireDate,
+      },
+      requirements: requirementsWithStatus,
+      groupedByCategory: grouped,
+      completionPercentage,
+      totalRequirements: requirements.length,
+      completedRequirements: requirements.filter(
+        (r) => r.status === 'approved' || r.status === 'submitted'
+      ).length,
+    });
+  } catch (error) {
+    console.error("Get onboarding requirements error:", error);
+    res.status(500).json({ error: "Failed to fetch onboarding requirements" });
+  }
+});
+
+// Update requirement status
+router.patch("/onboarding/requirements/:id", async (req: Request, res: Response) => {
+  try {
+    const requirementId = parseInt(req.params.id);
+    const { status, notes, documentUrl } = req.body;
+
+    if (Number.isNaN(requirementId)) {
+      return res.status(400).json({ error: "Invalid requirement ID" });
+    }
+
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    if (status) {
+      updateData.status = status;
+      if (status === 'submitted' || status === 'approved') {
+        updateData.submittedAt = new Date();
+      }
+    }
+
+    if (notes !== undefined) {
+      updateData.notes = notes;
+    }
+
+    if (documentUrl !== undefined) {
+      updateData.documentUrl = documentUrl;
+    }
+
+    const [updated] = await db.update(onboardingRequirements)
+      .set(updateData)
+      .where(eq(onboardingRequirements.id, requirementId))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Requirement not found" });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Update requirement error:", error);
+    res.status(500).json({ error: "Failed to update requirement" });
+  }
+});
+
+// Upload document for requirement
+router.post("/onboarding/requirements/:id/upload", async (req: Request, res: Response) => {
+  try {
+    const requirementId = parseInt(req.params.id);
+    const { documentUrl, notes } = req.body;
+
+    if (Number.isNaN(requirementId)) {
+      return res.status(400).json({ error: "Invalid requirement ID" });
+    }
+
+    if (!documentUrl) {
+      return res.status(400).json({ error: "Document URL is required" });
+    }
+
+    const [updated] = await db.update(onboardingRequirements)
+      .set({
+        documentUrl,
+        notes,
+        status: 'submitted',
+        submittedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(onboardingRequirements.id, requirementId))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Requirement not found" });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Upload requirement document error:", error);
+    res.status(500).json({ error: "Failed to upload document" });
   }
 });
 

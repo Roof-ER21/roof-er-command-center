@@ -17,7 +17,12 @@ import {
   FileText,
   GraduationCap,
   Package,
-  AlertCircle
+  AlertCircle,
+  Shield,
+  DollarSign,
+  Scale,
+  Briefcase,
+  AlertTriangle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -43,9 +48,40 @@ interface OnboardingTask {
   dueDate?: string;
 }
 
+interface OnboardingRequirement {
+  id: number;
+  requirementName: string;
+  description?: string;
+  category: 'tax' | 'insurance' | 'legal' | 'training' | 'equipment';
+  employeeType: 'W2' | '1099' | 'BOTH';
+  status: 'pending' | 'submitted' | 'approved' | 'rejected';
+  dueDate?: string;
+  submittedAt?: string;
+  documentUrl?: string;
+  notes?: string;
+  isRequired: boolean;
+  isOverdue?: boolean;
+}
+
+interface EmployeeRequirementsData {
+  employee: {
+    id: number;
+    name: string;
+    employmentType: 'W2' | '1099' | 'CONTRACTOR' | 'SUB_CONTRACTOR';
+    hireDate?: string;
+  };
+  requirements: OnboardingRequirement[];
+  groupedByCategory: Record<string, OnboardingRequirement[]>;
+  completionPercentage: number;
+  totalRequirements: number;
+  completedRequirements: number;
+}
+
 export function OnboardingPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
+  const [selectedEmployeeForRequirements, setSelectedEmployeeForRequirements] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [employmentTypeFilter, setEmploymentTypeFilter] = useState<'ALL' | 'W2' | '1099'>('ALL');
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAdmin, isManager } = usePermissions();
@@ -91,6 +127,20 @@ export function OnboardingPage() {
       if (!response.ok) throw new Error('Failed to fetch onboarding checklists');
       return response.json();
     }
+  });
+
+  // New query for requirements
+  const { data: requirementsData } = useQuery<EmployeeRequirementsData | null>({
+    queryKey: ['/api/hr/onboarding/requirements', selectedEmployeeForRequirements],
+    queryFn: async () => {
+      if (!selectedEmployeeForRequirements) return null;
+      const response = await fetch(`/api/hr/onboarding/${selectedEmployeeForRequirements}/requirements`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch requirements');
+      return response.json();
+    },
+    enabled: !!selectedEmployeeForRequirements,
   });
 
   const createChecklistMutation = useMutation({
@@ -148,9 +198,41 @@ export function OnboardingPage() {
     }
   });
 
+  const updateRequirementMutation = useMutation({
+    mutationFn: async ({ id, status, notes }: { id: number; status: string; notes?: string }) => {
+      const response = await fetch(`/api/hr/onboarding/requirements/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ status, notes })
+      });
+      if (!response.ok) throw new Error('Failed to update requirement');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/hr/onboarding/requirements'] });
+      toast({
+        title: 'Success',
+        description: 'Requirement updated successfully'
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update requirement',
+        variant: 'destructive'
+      });
+    }
+  });
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'submitted': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'approved': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'rejected': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
       case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
@@ -159,9 +241,12 @@ export function OnboardingPage() {
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'documents': return <FileText className="w-4 h-4" />;
+      case 'tax': return <DollarSign className="w-4 h-4" />;
+      case 'insurance': return <Shield className="w-4 h-4" />;
+      case 'legal': return <Scale className="w-4 h-4" />;
       case 'training': return <GraduationCap className="w-4 h-4" />;
       case 'equipment': return <Package className="w-4 h-4" />;
+      case 'documents': return <FileText className="w-4 h-4" />;
       case 'admin': return <CheckCircle className="w-4 h-4" />;
       default: return <Clock className="w-4 h-4" />;
     }
@@ -177,10 +262,25 @@ export function OnboardingPage() {
     toggleTaskMutation.mutate({ checklistId, taskId });
   };
 
+  const handleUpdateRequirement = (id: number, status: string) => {
+    updateRequirementMutation.mutate({ id, status });
+  };
+
   // Get employees without onboarding checklists
   const employeesWithoutChecklist = employees?.filter(
     (emp: any) => !checklists?.some((cl: OnboardingChecklist) => cl.employeeId === emp.id)
   ) || [];
+
+  // Get employees with W2 or 1099 employment type
+  const employeesWithRequirements = employees?.filter(
+    (emp: any) => emp.employmentType === 'W2' || emp.employmentType === '1099'
+  ) || [];
+
+  // Filter requirements based on employment type filter
+  const filteredRequirements = requirementsData?.requirements.filter((req) => {
+    if (employmentTypeFilter === 'ALL') return true;
+    return req.employeeType === employmentTypeFilter || req.employeeType === 'BOTH';
+  }) || [];
 
   if (isLoading) {
     return <div className="p-8">Loading onboarding checklists...</div>;
@@ -244,7 +344,8 @@ export function OnboardingPage() {
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="checklists">Checklists</TabsTrigger>
+          <TabsTrigger value="checklists">Legacy Checklists</TabsTrigger>
+          <TabsTrigger value="requirements">W2 vs 1099 Requirements</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
         </TabsList>
 
@@ -394,6 +495,266 @@ export function OnboardingPage() {
                   <p className="text-muted-foreground">No onboarding checklists yet</p>
                   <p className="text-sm text-muted-foreground mt-2">
                     Create a checklist for new hires to track their onboarding progress
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="requirements">
+          <div className="space-y-6">
+            {/* Employee Selector */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Select Employee</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Select
+                  value={selectedEmployeeForRequirements?.toString() || ''}
+                  onValueChange={(value) => setSelectedEmployeeForRequirements(parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee to view requirements" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employeesWithRequirements.map((emp: any) => (
+                      <SelectItem key={emp.id} value={emp.id.toString()}>
+                        {emp.firstName} {emp.lastName} - {emp.employmentType} - {emp.position}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+
+            {/* Requirements Display */}
+            {requirementsData && (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-4">
+                  <Card>
+                    <CardContent className="p-5">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <Briefcase className="w-6 h-6 text-blue-500" />
+                        </div>
+                        <div className="ml-5 w-0 flex-1">
+                          <dl>
+                            <dt className="text-sm font-medium text-muted-foreground truncate">
+                              Employment Type
+                            </dt>
+                            <dd className="text-xl font-semibold text-foreground">
+                              {requirementsData.employee.employmentType}
+                            </dd>
+                          </dl>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-5">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <CheckCircle className="w-6 h-6 text-green-500" />
+                        </div>
+                        <div className="ml-5 w-0 flex-1">
+                          <dl>
+                            <dt className="text-sm font-medium text-muted-foreground truncate">
+                              Completion
+                            </dt>
+                            <dd className="text-xl font-semibold text-foreground">
+                              {requirementsData.completionPercentage}%
+                            </dd>
+                          </dl>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-5">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <FileText className="w-6 h-6 text-blue-500" />
+                        </div>
+                        <div className="ml-5 w-0 flex-1">
+                          <dl>
+                            <dt className="text-sm font-medium text-muted-foreground truncate">
+                              Total Requirements
+                            </dt>
+                            <dd className="text-xl font-semibold text-foreground">
+                              {requirementsData.totalRequirements}
+                            </dd>
+                          </dl>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-5">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <AlertTriangle className="w-6 h-6 text-red-500" />
+                        </div>
+                        <div className="ml-5 w-0 flex-1">
+                          <dl>
+                            <dt className="text-sm font-medium text-muted-foreground truncate">
+                              Overdue
+                            </dt>
+                            <dd className="text-xl font-semibold text-foreground">
+                              {requirementsData.requirements.filter((r) => r.isOverdue).length}
+                            </dd>
+                          </dl>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Progress Bar */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>{requirementsData.employee.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">
+                          {requirementsData.employee.employmentType}
+                        </Badge>
+                        <Select value={employmentTypeFilter} onValueChange={(value: any) => setEmploymentTypeFilter(value)}>
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ALL">All</SelectItem>
+                            <SelectItem value="W2">W2 Only</SelectItem>
+                            <SelectItem value="1099">1099 Only</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Progress value={requirementsData.completionPercentage} className="mt-4" />
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {requirementsData.completedRequirements} of {requirementsData.totalRequirements} requirements completed
+                    </p>
+                  </CardHeader>
+                </Card>
+
+                {/* Requirements by Category */}
+                <div className="space-y-4">
+                  {['tax', 'insurance', 'legal', 'training', 'equipment'].map((category) => {
+                    const categoryReqs = filteredRequirements.filter((req) => req.category === category);
+                    if (categoryReqs.length === 0) return null;
+
+                    const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
+
+                    return (
+                      <Card key={category}>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            {getCategoryIcon(category)}
+                            {categoryName} Requirements
+                            <Badge variant="secondary">{categoryReqs.length}</Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {categoryReqs.map((req) => (
+                              <div
+                                key={req.id}
+                                className={`p-4 rounded-lg border ${
+                                  req.isOverdue
+                                    ? 'border-red-300 bg-red-50 dark:bg-red-950 dark:border-red-800'
+                                    : 'border-border'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <h4 className="font-semibold text-foreground">
+                                        {req.requirementName}
+                                      </h4>
+                                      {req.isRequired && (
+                                        <Badge variant="destructive" className="text-xs">
+                                          Required
+                                        </Badge>
+                                      )}
+                                      {req.isOverdue && (
+                                        <Badge variant="destructive" className="text-xs">
+                                          Overdue
+                                        </Badge>
+                                      )}
+                                      <Badge variant="outline" className="text-xs">
+                                        {req.employeeType}
+                                      </Badge>
+                                    </div>
+                                    {req.description && (
+                                      <p className="text-sm text-muted-foreground mt-1">
+                                        {req.description}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                      {req.dueDate && (
+                                        <span className={req.isOverdue ? 'text-red-600 font-semibold' : ''}>
+                                          Due: {new Date(req.dueDate).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                      {req.submittedAt && (
+                                        <span>
+                                          Submitted: {new Date(req.submittedAt).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {req.notes && (
+                                      <p className="text-xs text-muted-foreground mt-2 italic">
+                                        Note: {req.notes}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge className={getStatusColor(req.status)}>
+                                      {req.status}
+                                    </Badge>
+                                    {(isAdmin() || isManager()) && req.status === 'submitted' && (
+                                      <div className="flex gap-1">
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          onClick={() => handleUpdateRequirement(req.id, 'approved')}
+                                        >
+                                          Approve
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => handleUpdateRequirement(req.id, 'rejected')}
+                                        >
+                                          Reject
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {!selectedEmployeeForRequirements && (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Select an employee to view their onboarding requirements</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Requirements are automatically created based on employment type (W2 or 1099)
                   </p>
                 </CardContent>
               </Card>

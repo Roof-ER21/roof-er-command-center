@@ -237,6 +237,23 @@ export const onboardingTasks = pgTable('onboarding_tasks', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const onboardingRequirements = pgTable('onboarding_requirements', {
+  id: serial('id').primaryKey(),
+  employeeId: integer('employee_id').notNull().references(() => users.id),
+  requirementName: text('requirement_name').notNull(),
+  description: text('description'),
+  category: text('category').$type<'tax' | 'insurance' | 'legal' | 'training' | 'equipment'>().notNull(),
+  employeeType: text('employee_type').$type<'W2' | '1099' | 'BOTH'>().notNull(),
+  status: text('status').$type<'pending' | 'submitted' | 'approved' | 'rejected'>().default('pending').notNull(),
+  dueDate: timestamp('due_date'),
+  submittedAt: timestamp('submitted_at'),
+  documentUrl: text('document_url'),
+  notes: text('notes'),
+  isRequired: boolean('is_required').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const interviews = pgTable('interviews', {
   id: serial('id').primaryKey(),
   candidateId: integer('candidate_id').notNull().references(() => candidates.id),
@@ -1083,6 +1100,13 @@ export const onboardingTasksRelations = relations(onboardingTasks, ({ one }) => 
   }),
 }));
 
+export const onboardingRequirementsRelations = relations(onboardingRequirements, ({ one }) => ({
+  employee: one(users, {
+    fields: [onboardingRequirements.employeeId],
+    references: [users.id],
+  }),
+}));
+
 export const interviewsRelations = relations(interviews, ({ one }) => ({
   candidate: one(candidates, {
     fields: [interviews.candidateId],
@@ -1231,6 +1255,8 @@ export type HrAssignment = typeof hrAssignments.$inferSelect;
 export type Contract = typeof contracts.$inferSelect;
 export type Equipment = typeof equipment.$inferSelect;
 export type OnboardingTask = typeof onboardingTasks.$inferSelect;
+export type OnboardingRequirement = typeof onboardingRequirements.$inferSelect;
+export type NewOnboardingRequirement = typeof onboardingRequirements.$inferInsert;
 export type Interview = typeof interviews.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type DocumentAcknowledgement = typeof documentAcknowledgements.$inferSelect;
@@ -1351,3 +1377,38 @@ export const insertReportGenLogSchema = createInsertSchema(reportGenLog).omit({
 
 export type ReportGenLog = typeof reportGenLog.$inferSelect;
 export type NewReportGenLog = typeof reportGenLog.$inferInsert;
+
+// ============================================================================
+// EMAIL NOTIFICATIONS - Email Automation System
+// ============================================================================
+
+export const emailNotifications = pgTable('email_notifications', {
+  id: serial('id').primaryKey(),
+  recipientEmail: text('recipient_email').notNull(),
+  recipientName: text('recipient_name'),
+  subject: text('subject').notNull(),
+  emailType: text('email_type').$type<
+    | 'candidate_status'
+    | 'interview_scheduled'
+    | 'interview_reminder'
+    | 'offer_sent'
+    | 'welcome'
+    | 'onboarding_reminder'
+  >().notNull(),
+  status: text('status').$type<'pending' | 'sent' | 'failed' | 'bounced'>().default('pending').notNull(),
+  sentAt: timestamp('sent_at'),
+  errorMessage: text('error_message'),
+  retryCount: integer('retry_count').default(0),
+  metadata: jsonb('metadata'), // Store candidateId, interviewId, etc.
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const emailNotificationsRelations = relations(emailNotifications, ({ one }) => ({}));
+
+export const insertEmailNotificationSchema = createInsertSchema(emailNotifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type EmailNotification = typeof emailNotifications.$inferSelect;
+export type NewEmailNotification = typeof emailNotifications.$inferInsert;

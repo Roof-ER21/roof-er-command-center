@@ -19,6 +19,8 @@ import leaderboardRoutes from "./routes/leaderboard/index.js";
 import trainingRoutes from "./routes/training/index.js";
 import fieldRoutes from "./routes/field/index.js";
 import aiRoutes from "./routes/ai/index.js";
+import syncRoutes from "./routes/sync/index.js";
+import cronRoutes from "./routes/cron/index.js";
 
 // Import WebSocket handlers
 import { setupWebSocket } from "./websocket/index.js";
@@ -103,6 +105,8 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/training', trainingRoutes);
 app.use('/api/field', fieldRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/sync', syncRoutes);
+app.use('/api/cron', cronRoutes);
 
 // Direct routes for leaderboard data (used by some components)
 // /api/sales-reps -> sales reps list

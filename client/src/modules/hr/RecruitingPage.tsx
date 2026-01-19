@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarClock, Pencil, Search, UserPlus, Eye } from "lucide-react";
+import { CalendarClock, Pencil, Search, UserPlus, Eye, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { RecruitingAnalyticsPage } from "@/modules/hr/pages/RecruitingAnalyticsPage";
@@ -420,6 +420,35 @@ export function RecruitingPage() {
       toast({
         title: "Error",
         description: error?.message || "Failed to update interview status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const scoreCandidateMutation = useMutation({
+    mutationFn: async (candidateId: number) => {
+      const response = await fetch(`/api/hr/candidates/${candidateId}/score`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error?.error || "Failed to score candidate");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/candidates"] });
+      toast({
+        title: "AI Score Complete",
+        description: `Candidate scored ${data.rating}/5 stars (${Math.round(data.overallScore)}% match)`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to score candidate",
         variant: "destructive",
       });
     },
@@ -1141,6 +1170,15 @@ export function RecruitingPage() {
                           </td>
                           <td className="py-3 text-sm">
                             <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => scoreCandidateMutation.mutate(candidate.id)}
+                                disabled={scoreCandidateMutation.isPending}
+                                title="AI Score Candidate"
+                              >
+                                <Sparkles className="h-4 w-4" />
+                              </Button>
                               <Button variant="ghost" size="sm" onClick={() => handleViewDetails(candidate)}>
                                 <Eye className="h-4 w-4" />
                               </Button>
