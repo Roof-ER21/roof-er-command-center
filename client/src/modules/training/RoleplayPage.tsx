@@ -72,6 +72,7 @@ export function RoleplayPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           scenarioId: scenario.id,
+          scenarioTitle: scenario.name,
           difficulty: scenario.difficulty,
           division,
         }),

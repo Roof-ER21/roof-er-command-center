@@ -881,6 +881,45 @@ router.post("/roleplay/:sessionId/message", async (req: Request, res: Response) 
   }
 });
 
+// Get recent roleplay sessions
+router.get("/roleplay/sessions/recent", async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const limit = 5; // Default for recent
+
+    const sessions = await db
+      .select()
+      .from(roleplaySessions)
+      .where(eq(roleplaySessions.userId, userId))
+      .orderBy(desc(roleplaySessions.createdAt))
+      .limit(limit);
+
+    res.json({
+      success: true,
+      data: {
+        sessions: sessions.map(s => ({
+          id: s.id,
+          sessionId: `session_${new Date(s.createdAt).getTime()}_${userId}`,
+          scenarioId: s.scenarioId,
+          scenarioTitle: s.scenarioTitle,
+          difficulty: s.difficulty,
+          score: s.score,
+          messageCount: Array.isArray(s.messages) ? s.messages.length : 0,
+          xpEarned: s.xpEarned,
+          duration: s.duration,
+          createdAt: s.createdAt,
+          completedAt: s.completedAt,
+          isActive: !s.completedAt
+        })),
+        total: sessions.length
+      }
+    });
+  } catch (error) {
+    console.error("Get recent roleplay sessions error:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch recent sessions" });
+  }
+});
+
 // Get roleplay session history
 router.get("/roleplay/sessions", async (req: Request, res: Response) => {
   try {

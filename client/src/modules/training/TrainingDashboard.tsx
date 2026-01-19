@@ -46,7 +46,17 @@ interface TrainingStats {
 
 export function TrainingDashboard() {
   const { user } = useAuth();
-  const [activeDivision, setActiveDivision] = useState<'insurance' | 'retail'>((user?.division as 'insurance' | 'retail') || 'insurance');
+  // Default to insurance division - persisted in localStorage
+  const [activeDivision, setActiveDivision] = useState<'insurance' | 'retail'>(() => {
+    const saved = localStorage.getItem('training-division');
+    return (saved === 'retail' ? 'retail' : 'insurance');
+  });
+
+  // Save division preference when changed
+  const handleDivisionChange = (division: 'insurance' | 'retail') => {
+    setActiveDivision(division);
+    localStorage.setItem('training-division', division);
+  };
 
   // Fetch training stats from API
   const { data: statsData, isLoading, error } = useQuery({
@@ -157,7 +167,7 @@ export function TrainingDashboard() {
         {/* Division Toggle */}
         <div className="flex items-center bg-muted/50 rounded-full p-1 border">
           <button
-            onClick={() => setActiveDivision('insurance')}
+            onClick={() => handleDivisionChange('insurance')}
             className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
               activeDivision === 'insurance'
                 ? 'bg-red-600 text-white shadow-lg'
@@ -168,7 +178,7 @@ export function TrainingDashboard() {
             <span>Insurance</span>
           </button>
           <button
-            onClick={() => setActiveDivision('retail')}
+            onClick={() => handleDivisionChange('retail')}
             className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
               activeDivision === 'retail'
                 ? 'bg-emerald-600 text-white shadow-lg'
