@@ -21,11 +21,11 @@ export function AuthLayout() {
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-red-700 to-red-900 p-12 flex-col justify-between text-white">
         <div>
-          <div className="flex items-center gap-4">
-            <img src="/logo.png" alt="Roof ER Command Center" className="w-16 h-16 rounded-xl object-contain" />
+          <div className="flex items-center gap-6">
+            <img src="/logo.png" alt="Roof ER Command Center" className="w-28 h-28 rounded-2xl object-contain" />
             <div>
-              <h1 className="text-2xl font-bold">Roof ER</h1>
-              <p className="text-sm opacity-80">Command Center</p>
+              <h1 className="text-4xl font-bold"><span className="text-black">Roof</span> ER</h1>
+              <p className="text-lg opacity-80">Command Center</p>
             </div>
           </div>
         </div>
@@ -69,7 +69,7 @@ export function AuthLayout() {
         <div className="w-full max-w-md">
           {/* Logo above login card */}
           <div className="flex justify-center mb-8">
-            <img src="/logo.png" alt="Roof ER Command Center" className="w-24 h-24 object-contain" />
+            <img src="/logo.png" alt="Roof ER Command Center" className="w-40 h-40 object-contain" />
           </div>
           <Outlet />
         </div>
