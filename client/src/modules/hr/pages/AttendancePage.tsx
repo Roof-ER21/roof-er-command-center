@@ -8,10 +8,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/useToast";
 import { usePermissions } from "@/hooks/usePermissions";
-import { CalendarCheck, MapPin, Plus } from "lucide-react";
+import { CalendarCheck, MapPin, Plus, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { AttendanceCheckInPage } from "@/modules/hr/pages/AttendanceCheckInPage";
+
+interface LocationData {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  address?: string;
+}
 
 interface AttendanceSession {
   id: number;
@@ -95,13 +102,63 @@ export function AttendancePage() {
     },
   });
 
+  const [checkingInSession, setCheckingInSession] = useState<number | null>(null);
+
+  // Get GPS location
+  const getLocation = async (): Promise<LocationData | null> => {
+    if (!navigator.geolocation) {
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const locData: LocationData = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+          };
+
+          // Try to get address from coordinates (reverse geocoding)
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${locData.latitude}&lon=${locData.longitude}`
+            );
+            if (response.ok) {
+              const data = await response.json();
+              locData.address = data.display_name;
+            }
+          } catch {
+            // Address lookup failed, continue without it
+          }
+
+          resolve(locData);
+        },
+        () => {
+          resolve(null);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000,
+        }
+      );
+    });
+  };
+
   const checkInMutation = useMutation({
-    mutationFn: async (sessionId: number) => {
+    mutationFn: async ({ sessionId, location }: { sessionId: number; location: LocationData | null }) => {
       const response = await fetch("/api/hr/attendance/check-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ sessionId }),
+        body: JSON.stringify({
+          sessionId,
+          latitude: location?.latitude,
+          longitude: location?.longitude,
+          locationAddress: location?.address,
+          locationAccuracy: location?.accuracy,
+        }),
       });
       if (!response.ok) {
         const error = await response.json();
@@ -111,12 +168,14 @@ export function AttendancePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/hr/attendance/sessions"] });
+      setCheckingInSession(null);
       toast({
         title: "Checked in",
-        description: "Your attendance has been recorded.",
+        description: "Your attendance and location have been recorded.",
       });
     },
     onError: (error: any) => {
+      setCheckingInSession(null);
       toast({
         title: "Error",
         description: error?.message || "Failed to check in",
@@ -124,6 +183,12 @@ export function AttendancePage() {
       });
     },
   });
+
+  const handleCheckIn = async (sessionId: number) => {
+    setCheckingInSession(sessionId);
+    const location = await getLocation();
+    checkInMutation.mutate({ sessionId, location });
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -240,10 +305,17 @@ export function AttendancePage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={session.status !== "open" || checkInMutation.isPending}
-                      onClick={() => checkInMutation.mutate(session.id)}
+                      disabled={session.status !== "open" || checkingInSession === session.id}
+                      onClick={() => handleCheckIn(session.id)}
                     >
-                      Check In
+                      {checkingInSession === session.id ? (
+                        <>
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          Locating...
+                        </>
+                      ) : (
+                        "Check In"
+                      )}
                     </Button>
                   </div>
                 </div>

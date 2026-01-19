@@ -376,6 +376,11 @@ export const attendanceCheckIns = pgTable('attendance_check_ins', {
   userId: integer('user_id').notNull().references(() => users.id),
   checkInAt: timestamp('check_in_at').defaultNow().notNull(),
   status: text('status').$type<'present' | 'late' | 'excused'>().notNull().default('present'),
+  // GPS location fields
+  latitude: real('latitude'),
+  longitude: real('longitude'),
+  locationAddress: text('location_address'),
+  locationAccuracy: real('location_accuracy'), // GPS accuracy in meters
 });
 
 export const meetingRooms = pgTable('meeting_rooms', {

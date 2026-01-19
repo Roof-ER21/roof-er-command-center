@@ -86,34 +86,15 @@ export function AppShell() {
       show: hasHRAccess,
       color: "text-purple-600",
       children: [
-        { name: "Employees", href: "/hr/employees", icon: Users, show: hasHRAccess, section: "People" },
-        { name: "Team Dashboard", href: "/hr/team-dashboard", icon: Users, show: hasHRAccess, section: "People" },
-        { name: "Team Directory", href: "/hr/team-directory", icon: UsersRound, show: hasHRAccess, section: "People" },
-        { name: "Org Chart", href: "/hr/org-chart", icon: Users, show: hasHRAccess, section: "People" },
-        { name: "Assignments", href: "/hr/employee-assignments", icon: UserCog, show: hasHRAccess, section: "People" },
-        { name: "Employee Portal", href: "/hr/employee-portal", icon: User, show: hasHRAccess, section: "People" },
-        { name: "Recruiting", href: "/hr/recruiting", icon: UserPlus, show: hasHRAccess, section: "Recruiting" },
-        { name: "Enterprise Analytics", href: "/hr/enterprise-analytics", icon: BarChart3, show: hasHRAccess, section: "Analytics" },
-        { name: "Safety", href: "/hr/safety", icon: ShieldCheck, show: hasHRAccess, section: "Analytics" },
-        { name: "Roadmap", href: "/hr/roadmap", icon: TrendingUp, show: hasHRAccess, section: "Analytics" },
-        { name: "Onboarding", href: "/hr/onboarding", icon: UserCheck, show: hasHRAccess, section: "Recruiting" },
-        { name: "PTO", href: "/hr/pto", icon: Calendar, show: hasHRAccess, section: "Time & Attendance" },
-        { name: "Attendance", href: "/hr/attendance", icon: CalendarClock, show: hasHRAccess, section: "Time & Attendance" },
-        { name: "Meeting Rooms", href: "/hr/meeting-rooms", icon: Briefcase, show: hasHRAccess, section: "Time & Attendance" },
-        { name: "Calendar", href: "/hr/calendar", icon: CalendarDays, show: hasHRAccess, section: "Time & Attendance" },
-        { name: "QR Codes", href: "/hr/qr-codes", icon: QrCode, show: hasHRAccess, section: "Time & Attendance" },
-        { name: "Documents", href: "/hr/documents", icon: FileSearch, show: hasHRAccess, section: "Documents & Compliance" },
-        { name: "Contracts", href: "/hr/contracts", icon: FileText, show: hasHRAccess, section: "Documents & Compliance" },
-        { name: "Equipment", href: "/hr/equipment", icon: Package, show: hasHRAccess, section: "Operations" },
-        { name: "Tools", href: "/hr/tools", icon: Wrench, show: hasHRAccess, section: "Operations" },
-        { name: "Territories", href: "/hr/territories", icon: MapPin, show: hasHRAccess, section: "Operations" },
-        { name: "Reviews", href: "/hr/reviews", icon: TrendingUp, show: hasHRAccess, section: "Operations" },
-        { name: "Workflows", href: "/hr/workflows", icon: GitBranch, show: hasHRAccess, section: "Operations" },
-        { name: "Tasks", href: "/hr/tasks", icon: ClipboardList, show: hasHRAccess, section: "Operations" },
-        { name: "Admin Hub", href: "/hr/admin-hub", icon: Settings, show: hasHRAccess, section: "Admin & AI" },
-        { name: "Susan AI Admin", href: "/hr/susan-ai-admin", icon: Bot, show: hasHRAccess, section: "Admin & AI" },
-        { name: "Scheduled Reports", href: "/hr/scheduled-reports", icon: FileText, show: hasHRAccess, section: "Admin & AI" },
-        { name: "Google Integration", href: "/hr/google-integration", icon: KeyRound, show: hasHRAccess, section: "Admin & AI" },
+        // Consolidated navigation - 8 main items
+        { name: "People", href: "/hr/people", icon: UsersRound, show: hasHRAccess },
+        { name: "Recruiting", href: "/hr/recruiting", icon: UserPlus, show: hasHRAccess },
+        { name: "Time & Attendance", href: "/hr/time", icon: CalendarClock, show: hasHRAccess },
+        { name: "Documents", href: "/hr/documents", icon: FileSearch, show: hasHRAccess },
+        { name: "Equipment", href: "/hr/equipment", icon: Package, show: hasHRAccess },
+        { name: "Operations", href: "/hr/operations", icon: ClipboardList, show: hasHRAccess },
+        { name: "Analytics", href: "/hr/analytics", icon: BarChart3, show: hasHRAccess },
+        { name: "Admin", href: "/hr/admin", icon: Settings, show: hasHRAccess },
       ],
     },
     {
@@ -175,23 +156,52 @@ export function AppShell() {
   };
 
   const isPathActive = (href: string) => {
+    // Consolidated HR navigation - People section
+    if (href === "/hr/people") {
+      return [
+        "/hr/people", "/hr/employees", "/hr/team-dashboard", "/hr/team-directory",
+        "/hr/org-chart", "/hr/employee-assignments", "/hr/employee-portal"
+      ].some(p => location.pathname.startsWith(p));
+    }
+    // Recruiting section
     if (href === "/hr/recruiting") {
-      return (
-        location.pathname === "/hr/recruiting" ||
-        ["/hr/recruiting-analytics", "/hr/resume-uploader", "/hr/ai-criteria"].includes(location.pathname)
-      );
+      return [
+        "/hr/recruiting", "/hr/recruiting-analytics", "/hr/resume-uploader",
+        "/hr/ai-criteria", "/hr/onboarding", "/hr/onboarding-templates"
+      ].some(p => location.pathname.startsWith(p));
     }
-    if (href === "/hr/pto") {
-      return location.pathname === "/hr/pto" || location.pathname === "/hr/pto-policies";
+    // Time & Attendance section
+    if (href === "/hr/time") {
+      return [
+        "/hr/time", "/hr/pto", "/hr/pto-policies", "/hr/attendance",
+        "/hr/meeting-rooms", "/hr/calendar", "/hr/qr-codes", "/hr/workplace"
+      ].some(p => location.pathname.startsWith(p));
     }
+    // Documents section
     if (href === "/hr/documents") {
-      return (
-        location.pathname === "/hr/documents" ||
-        ["/hr/coi-documents", "/hr/email-templates"].includes(location.pathname)
-      );
+      return [
+        "/hr/documents", "/hr/coi-documents", "/hr/email-templates", "/hr/contracts"
+      ].some(p => location.pathname.startsWith(p));
     }
-    if (href === "/hr/onboarding") {
-      return location.pathname === "/hr/onboarding" || location.pathname === "/hr/onboarding-templates";
+    // Operations section
+    if (href === "/hr/operations") {
+      return [
+        "/hr/operations", "/hr/tools", "/hr/territories", "/hr/reviews",
+        "/hr/workflows", "/hr/tasks"
+      ].some(p => location.pathname.startsWith(p));
+    }
+    // Analytics section
+    if (href === "/hr/analytics") {
+      return [
+        "/hr/analytics", "/hr/enterprise-analytics", "/hr/safety", "/hr/roadmap"
+      ].some(p => location.pathname.startsWith(p));
+    }
+    // Admin section
+    if (href === "/hr/admin") {
+      return [
+        "/hr/admin", "/hr/admin-hub", "/hr/susan-ai-admin",
+        "/hr/scheduled-reports", "/hr/google-integration"
+      ].some(p => location.pathname.startsWith(p));
     }
     return location.pathname === href ||
       (href !== '/dashboard' && location.pathname.startsWith(href));

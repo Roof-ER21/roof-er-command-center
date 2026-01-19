@@ -1919,7 +1919,7 @@ router.get("/attendance/check-ins", async (req: Request, res: Response) => {
 
 router.post("/attendance/check-in", async (req: Request, res: Response) => {
   try {
-    const { sessionId, status } = req.body;
+    const { sessionId, status, latitude, longitude, locationAddress, locationAccuracy } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -1942,6 +1942,11 @@ router.post("/attendance/check-in", async (req: Request, res: Response) => {
       sessionId: parsedSessionId,
       userId,
       status: status || "present",
+      // GPS location data (optional)
+      latitude: latitude ? parseFloat(latitude) : null,
+      longitude: longitude ? parseFloat(longitude) : null,
+      locationAddress: locationAddress || null,
+      locationAccuracy: locationAccuracy ? parseFloat(locationAccuracy) : null,
     }).returning();
 
     res.status(201).json(checkIn);

@@ -51,6 +51,12 @@ import { TeamDashboardPage } from "@/modules/hr/pages/TeamDashboardPage";
 import { EnterpriseAnalyticsPage } from "@/modules/hr/pages/EnterpriseAnalyticsPage";
 import { SafetyDashboardPage } from "@/modules/hr/pages/SafetyDashboardPage";
 import { RoadmapPage } from "@/modules/hr/pages/RoadmapPage";
+// Consolidated HR Hub Pages
+import { PeoplePage } from "@/modules/hr/pages/PeoplePage";
+import { TimePage } from "@/modules/hr/pages/TimePage";
+import { OperationsPage } from "@/modules/hr/pages/OperationsPage";
+import { AnalyticsPage } from "@/modules/hr/pages/AnalyticsPage";
+import { AdminPage } from "@/modules/hr/pages/AdminPage";
 
 // Leaderboard Module
 import { LeaderboardDashboard } from "@/modules/leaderboard/LeaderboardDashboard";
@@ -133,6 +139,13 @@ export default function App() {
 
           {/* HR Module */}
           <Route path="/hr" element={<ProtectedRoute requiredModule="hr"><HRDashboard /></ProtectedRoute>} />
+          {/* Consolidated HR Hub Pages */}
+          <Route path="/hr/people" element={<ProtectedRoute requiredModule="hr"><PeoplePage /></ProtectedRoute>} />
+          <Route path="/hr/time" element={<ProtectedRoute requiredModule="hr"><TimePage /></ProtectedRoute>} />
+          <Route path="/hr/operations" element={<ProtectedRoute requiredModule="hr"><OperationsPage /></ProtectedRoute>} />
+          <Route path="/hr/analytics" element={<ProtectedRoute requiredModule="hr"><AnalyticsPage /></ProtectedRoute>} />
+          <Route path="/hr/admin" element={<ProtectedRoute requiredModule="hr"><AdminPage /></ProtectedRoute>} />
+          {/* Individual HR Pages (accessed via hub pages) */}
           <Route path="/hr/employees" element={<ProtectedRoute requiredModule="hr"><EmployeesPage /></ProtectedRoute>} />
           <Route path="/hr/employees/:id" element={<ProtectedRoute requiredModule="hr"><EmployeeDetailPage /></ProtectedRoute>} />
           <Route path="/hr/pto" element={<ProtectedRoute requiredModule="hr"><PTOPage /></ProtectedRoute>} />
