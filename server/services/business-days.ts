@@ -4,7 +4,7 @@
  */
 
 import { db } from "../db.js";
-import { companyPtoPolicy } from "@/shared/schema.js";
+import { companyPtoPolicy } from "../../shared/schema.js";
 
 /**
  * Check if a date is a weekend (Saturday or Sunday)
