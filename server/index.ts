@@ -15,12 +15,15 @@ import { dirname, join } from "path";
 import authRoutes from "./routes/auth/index.js";
 import hrRoutes from "./routes/hr/index.js";
 import hrPublicRoutes from "./routes/hr/public.js";
+import hrSlugRoutes from "./routes/hr/slugs.js";
 import leaderboardRoutes from "./routes/leaderboard/index.js";
+import salesRoutes from "./routes/sales/index.js";
 import trainingRoutes from "./routes/training/index.js";
 import fieldRoutes from "./routes/field/index.js";
 import aiRoutes from "./routes/ai/index.js";
 import syncRoutes from "./routes/sync/index.js";
 import cronRoutes from "./routes/cron/index.js";
+import safetyRoutes from "./routes/safety/index.js";
 
 // Import WebSocket handlers
 import { setupWebSocket } from "./websocket/index.js";
@@ -30,6 +33,9 @@ import { initializeAchievementBroadcaster } from "./utils/achievement-broadcaste
 import { db } from "./db.js";
 import { salesReps, teams } from "../shared/schema.js";
 import { eq, desc } from "drizzle-orm";
+
+// Import storage service to initialize and log storage mode
+import { getStorageService } from "./services/blob-storage.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -100,12 +106,15 @@ app.get('/api/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/hr', hrRoutes);
-app.use('/api/hr/public', hrPublicRoutes);
+app.use('/api/hr', hrSlugRoutes); // Slug management routes
+app.use('/api/public', hrPublicRoutes); // Public routes (NO AUTH)
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/sales', salesRoutes);
 app.use('/api/training', trainingRoutes);
 app.use('/api/field', fieldRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/sync', syncRoutes);
+app.use('/api/safety', safetyRoutes);
 app.use('/api/cron', cronRoutes);
 
 // Direct routes for leaderboard data (used by some components)
@@ -181,6 +190,12 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 const PORT = process.env.PORT || 5000;
 
 httpServer.listen(PORT, () => {
+  // Initialize storage service and get its type
+  const storageService = getStorageService();
+  const storageType = storageService.getStorageType();
+  const storageIcon = storageType === 'blob' ? '☁️' : '💾';
+  const storageLabel = storageType === 'blob' ? 'Vercel Blob' : 'Local Storage';
+
   console.log(`
 🚀 Roof ER Command Center Server
 ================================
@@ -194,6 +209,9 @@ Modules Enabled:
   ✅ Training Center
   ✅ Field Assistant
   ✅ WebSocket (Real-time)
+
+Storage Configuration:
+  ${storageIcon} ${storageLabel}
 ================================
   `);
 });

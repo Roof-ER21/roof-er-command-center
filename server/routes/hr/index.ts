@@ -48,6 +48,9 @@ import {
   sendCandidateStatusEmail,
   sendInterviewScheduledEmail,
   sendOfferEmail,
+  sendPTORequestNotification,
+  sendPTOApprovalEmail,
+  sendPTODenialEmail,
 } from "../../services/email.js";
 import {
   createOnboardingRequirements,
@@ -600,6 +603,53 @@ router.post("/pto", async (req: Request, res: Response) => {
       status: "PENDING",
     }).returning();
 
+    // Send email notification to HR admins/managers
+    try {
+      // Get employee details
+      const [employee] = await db.select().from(users).where(eq(users.id, employeeId)).limit(1);
+
+      // Get all HR admins and managers
+      const managers = await db.select()
+        .from(users)
+        .where(
+          and(
+            eq(users.isActive, true),
+            sql`UPPER(${users.role}) IN ('SYSTEM_ADMIN', 'HR_ADMIN', 'GENERAL_MANAGER', 'MANAGER')`
+          )
+        );
+
+      if (employee && managers.length > 0) {
+        // Send email to all managers/HR admins
+        for (const manager of managers) {
+          await sendPTORequestNotification(
+            {
+              firstName: employee.firstName,
+              lastName: employee.lastName,
+              email: employee.email,
+              position: employee.position,
+            },
+            {
+              id: newRequest.id,
+              startDate: newRequest.startDate,
+              endDate: newRequest.endDate,
+              days: newRequest.days,
+              type: newRequest.type,
+              reason: newRequest.reason,
+            },
+            {
+              firstName: manager.firstName,
+              lastName: manager.lastName,
+              email: manager.email,
+            }
+          );
+        }
+        console.log(`✅ Sent PTO request notification to ${managers.length} manager(s)`);
+      }
+    } catch (emailError) {
+      // Log email error but don't fail the request
+      console.error("Failed to send PTO request email notification:", emailError);
+    }
+
     res.status(201).json({
       ...newRequest,
       status: newRequest.status?.toLowerCase() || "pending",
@@ -637,12 +687,51 @@ router.patch("/pto/:id", async (req: Request, res: Response) => {
         status: normalizedStatus as 'PENDING' | 'APPROVED' | 'DENIED',
         reviewedBy: req.user?.id || null,
         reviewedAt: new Date(),
+        reviewNotes: req.body.reviewNotes || null,
       })
       .where(eq(ptoRequests.id, requestId))
       .returning();
 
     if (!updated) {
       return res.status(404).json({ error: "PTO request not found" });
+    }
+
+    // Send email notification to employee
+    try {
+      // Get employee details
+      const [employee] = await db.select().from(users).where(eq(users.id, updated.employeeId)).limit(1);
+
+      if (employee && req.user) {
+        const approver = {
+          firstName: req.user.firstName,
+          lastName: req.user.lastName,
+        };
+
+        const requestData = {
+          id: updated.id,
+          startDate: updated.startDate,
+          endDate: updated.endDate,
+          days: updated.days,
+          type: updated.type,
+        };
+
+        const employeeData = {
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+          email: employee.email,
+        };
+
+        if (normalizedStatus === 'APPROVED') {
+          await sendPTOApprovalEmail(employeeData, requestData, approver);
+          console.log(`✅ Sent PTO approval email to ${employee.email}`);
+        } else if (normalizedStatus === 'DENIED') {
+          await sendPTODenialEmail(employeeData, requestData, approver, req.body.reviewNotes);
+          console.log(`✅ Sent PTO denial email to ${employee.email}`);
+        }
+      }
+    } catch (emailError) {
+      // Log email error but don't fail the request
+      console.error("Failed to send PTO status email notification:", emailError);
     }
 
     res.json({

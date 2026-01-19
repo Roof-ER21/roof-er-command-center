@@ -8,6 +8,10 @@ import {
   interviewScheduledTemplate,
   interviewReminderTemplate,
   offerLetterTemplate,
+  ptoRequestSubmittedTemplate,
+  ptoApprovedTemplate,
+  ptoDeniedTemplate,
+  ptoReminderTemplate,
 } from './email-templates.js';
 
 /**
@@ -51,7 +55,7 @@ async function sendEmail(
   subject: string,
   html: string,
   text: string,
-  emailType: 'candidate_status' | 'interview_scheduled' | 'interview_reminder' | 'offer_sent' | 'welcome' | 'onboarding_reminder',
+  emailType: 'candidate_status' | 'interview_scheduled' | 'interview_reminder' | 'offer_sent' | 'welcome' | 'onboarding_reminder' | 'pto_submitted' | 'pto_approved' | 'pto_denied' | 'pto_reminder',
   metadata: EmailMetadata
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
@@ -443,6 +447,110 @@ This is an automated message from Roof ER Command Center.
   );
 }
 
+/**
+ * Send PTO request notification to manager/HR
+ */
+export async function sendPTORequestNotification(
+  employee: { firstName: string; lastName: string; email: string; position?: string | null },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason: string },
+  manager: { firstName: string; lastName: string; email: string }
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html, text } = ptoRequestSubmittedTemplate(employee, request, manager);
+
+  return sendEmail(
+    manager.email,
+    `${manager.firstName} ${manager.lastName}`,
+    subject,
+    html,
+    text,
+    'pto_submitted',
+    {
+      ptoRequestId: request.id,
+      employeeEmail: employee.email,
+      startDate: request.startDate,
+      endDate: request.endDate,
+    }
+  );
+}
+
+/**
+ * Send PTO approval notification to employee
+ */
+export async function sendPTOApprovalEmail(
+  employee: { firstName: string; lastName: string; email: string },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string },
+  approver: { firstName: string; lastName: string }
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html, text } = ptoApprovedTemplate(employee, request, approver);
+
+  return sendEmail(
+    employee.email,
+    `${employee.firstName} ${employee.lastName}`,
+    subject,
+    html,
+    text,
+    'pto_approved',
+    {
+      ptoRequestId: request.id,
+      approverName: `${approver.firstName} ${approver.lastName}`,
+      startDate: request.startDate,
+      endDate: request.endDate,
+    }
+  );
+}
+
+/**
+ * Send PTO denial notification to employee
+ */
+export async function sendPTODenialEmail(
+  employee: { firstName: string; lastName: string; email: string },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string },
+  approver: { firstName: string; lastName: string },
+  reason?: string
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html, text } = ptoDeniedTemplate(employee, request, approver, reason);
+
+  return sendEmail(
+    employee.email,
+    `${employee.firstName} ${employee.lastName}`,
+    subject,
+    html,
+    text,
+    'pto_denied',
+    {
+      ptoRequestId: request.id,
+      approverName: `${approver.firstName} ${approver.lastName}`,
+      denialReason: reason,
+      startDate: request.startDate,
+      endDate: request.endDate,
+    }
+  );
+}
+
+/**
+ * Send PTO reminder (1 day before start date)
+ */
+export async function sendPTOReminder(
+  employee: { firstName: string; lastName: string; email: string },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string }
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html, text } = ptoReminderTemplate(employee, request);
+
+  return sendEmail(
+    employee.email,
+    `${employee.firstName} ${employee.lastName}`,
+    subject,
+    html,
+    text,
+    'pto_reminder',
+    {
+      ptoRequestId: request.id,
+      startDate: request.startDate,
+      endDate: request.endDate,
+    }
+  );
+}
+
 export default {
   sendCandidateStatusEmail,
   sendInterviewScheduledEmail,
@@ -450,4 +558,8 @@ export default {
   sendOfferEmail,
   sendWelcomeEmail,
   sendOnboardingReminderEmail,
+  sendPTORequestNotification,
+  sendPTOApprovalEmail,
+  sendPTODenialEmail,
+  sendPTOReminder,
 };

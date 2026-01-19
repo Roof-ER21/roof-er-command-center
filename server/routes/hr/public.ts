@@ -1,9 +1,163 @@
 import { Router, Request, Response } from "express";
 import { db } from "../../db.js";
-import { contracts, contractTokens, equipment, equipmentSignatureTokens } from "../../../shared/schema.js";
-import { eq } from "drizzle-orm";
+import { contracts, contractTokens, equipment, equipmentSignatureTokens, users } from "../../../shared/schema.js";
+import { eq, and, sql } from "drizzle-orm";
 
 const router = Router();
+
+// ============================================================================
+// PUBLIC EMPLOYEE DIRECTORY (NO AUTH REQUIRED)
+// ============================================================================
+
+// GET /api/public/directory - List all public employees
+router.get("/directory", async (req: Request, res: Response) => {
+  try {
+    const { department, search } = req.query;
+
+    let query = db
+      .select({
+        id: users.id,
+        slug: users.slug,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        position: users.position,
+        department: users.department,
+        avatar: users.avatar,
+        publicBio: users.publicBio,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.isPublicProfile, true),
+          eq(users.isActive, true)
+        )
+      );
+
+    // Apply filters
+    if (department && typeof department === 'string') {
+      query = query.where(
+        and(
+          eq(users.isPublicProfile, true),
+          eq(users.isActive, true),
+          eq(users.department, department)
+        )
+      );
+    }
+
+    let employees = await query;
+
+    // Apply search filter if provided
+    if (search && typeof search === 'string') {
+      const searchLower = search.toLowerCase();
+      employees = employees.filter(emp =>
+        emp.firstName.toLowerCase().includes(searchLower) ||
+        emp.lastName.toLowerCase().includes(searchLower) ||
+        (emp.position && emp.position.toLowerCase().includes(searchLower)) ||
+        (emp.department && emp.department.toLowerCase().includes(searchLower))
+      );
+    }
+
+    res.json(employees);
+  } catch (error) {
+    console.error("Public directory fetch error:", error);
+    res.status(500).json({ error: "Directory lookup failed" });
+  }
+});
+
+// GET /api/public/employees/:slug - Get single employee public profile
+router.get("/employees/:slug", async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params;
+
+    const [employee] = await db
+      .select({
+        id: users.id,
+        slug: users.slug,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        position: users.position,
+        department: users.department,
+        avatar: users.avatar,
+        publicBio: users.publicBio,
+        publicPhone: users.publicPhone,
+        publicEmail: users.publicEmail,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.slug, slug),
+          eq(users.isPublicProfile, true),
+          eq(users.isActive, true)
+        )
+      );
+
+    if (!employee) {
+      return res.status(404).json({ error: "Employee profile not found" });
+    }
+
+    res.json(employee);
+  } catch (error) {
+    console.error("Public employee profile fetch error:", error);
+    res.status(500).json({ error: "Profile lookup failed" });
+  }
+});
+
+// GET /api/public/team/:department - Get team members by department
+router.get("/team/:department", async (req: Request, res: Response) => {
+  try {
+    const { department } = req.params;
+
+    const employees = await db
+      .select({
+        id: users.id,
+        slug: users.slug,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        position: users.position,
+        department: users.department,
+        avatar: users.avatar,
+        publicBio: users.publicBio,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.department, department),
+          eq(users.isPublicProfile, true),
+          eq(users.isActive, true)
+        )
+      );
+
+    res.json(employees);
+  } catch (error) {
+    console.error("Public team fetch error:", error);
+    res.status(500).json({ error: "Team lookup failed" });
+  }
+});
+
+// GET /api/public/departments - Get list of departments with public employees
+router.get("/departments", async (req: Request, res: Response) => {
+  try {
+    const result = await db
+      .select({
+        department: users.department,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.isPublicProfile, true),
+          eq(users.isActive, true),
+          sql`${users.department} IS NOT NULL`
+        )
+      )
+      .groupBy(users.department);
+
+    res.json(result);
+  } catch (error) {
+    console.error("Public departments fetch error:", error);
+    res.status(500).json({ error: "Departments lookup failed" });
+  }
+});
 
 // Public contract lookup
 router.get("/contracts/:token", async (req: Request, res: Response) => {

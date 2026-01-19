@@ -65,6 +65,9 @@ import { ContestsPage } from "@/modules/leaderboard/ContestsPage";
 import { TVDisplayPage } from "@/modules/leaderboard/pages/TVDisplayPage";
 import { TeamsPage } from "@/modules/leaderboard/TeamsPage";
 
+// Sales Module
+import { SalesPerformancePage } from "@/modules/sales/SalesPerformancePage";
+
 // Training Module
 import { TrainingDashboard } from "@/modules/training/TrainingDashboard";
 import { CoachModePage } from "@/modules/training/CoachModePage";
@@ -82,6 +85,10 @@ import { DocumentsPage as FieldDocumentsPage } from "@/modules/field/DocumentsPa
 import { DocumentAnalysisPage } from "@/modules/field/DocumentAnalysisPage";
 import { ImageAnalysisPage } from "@/modules/field/ImageAnalysisPage";
 import { ProfilePage } from "@/pages/ProfilePage";
+
+// Public Pages (NO AUTH)
+import { PublicDirectoryPage } from "@/pages/PublicDirectoryPage";
+import { PublicProfilePage } from "@/pages/PublicProfilePage";
 
 // Protected Route Component
 function ProtectedRoute({
@@ -197,6 +204,10 @@ export default function App() {
           <Route path="/leaderboard/contests" element={<ProtectedRoute requiredModule="leaderboard"><ContestsPage /></ProtectedRoute>} />
           <Route path="/leaderboard/teams" element={<ProtectedRoute requiredModule="leaderboard"><TeamsPage /></ProtectedRoute>} />
 
+          {/* Sales Module */}
+          <Route path="/sales" element={<ProtectedRoute requiredModule="leaderboard"><SalesPerformancePage /></ProtectedRoute>} />
+          <Route path="/sales/performance" element={<ProtectedRoute requiredModule="leaderboard"><SalesPerformancePage /></ProtectedRoute>} />
+
           {/* Training Module */}
           <Route path="/training" element={<ProtectedRoute requiredModule="training"><TrainingDashboard /></ProtectedRoute>} />
           <Route path="/training/coach" element={<ProtectedRoute requiredModule="training"><CoachModePage /></ProtectedRoute>} />
@@ -218,6 +229,10 @@ export default function App() {
         {/* TV Display (no auth, full screen) */}
         <Route path="/leaderboard/tv" element={<TVDisplayPage />} />
         <Route path="/tv-display" element={<TVDisplayPage />} />
+
+        {/* Public Employee Directory (NO AUTH) */}
+        <Route path="/directory" element={<PublicDirectoryPage />} />
+        <Route path="/team/:slug" element={<PublicProfilePage />} />
 
         {/* Public HR forms */}
         <Route path="/public/contract/:token" element={<PublicContractPage />} />

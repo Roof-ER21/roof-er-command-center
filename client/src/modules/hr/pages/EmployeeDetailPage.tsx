@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeNotes } from "../components/EmployeeNotes";
+import { PublicProfileSettings } from "../components/PublicProfileSettings";
 
 export function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -198,11 +199,17 @@ export function EmployeeDetailPage() {
           >
             Tasks
           </TabsTrigger>
-          <TabsTrigger 
-            value="equipment" 
+          <TabsTrigger
+            value="equipment"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
           >
             Equipment
+          </TabsTrigger>
+          <TabsTrigger
+            value="public-profile"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+          >
+            Public Profile
           </TabsTrigger>
         </TabsList>
 
@@ -365,6 +372,11 @@ export function EmployeeDetailPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Public Profile Tab */}
+          <TabsContent value="public-profile" className="mt-0">
+            <PublicProfileSettings employee={employee} />
           </TabsContent>
         </div>
       </Tabs>

@@ -341,6 +341,350 @@ This is an automated message from Roof ER Command Center.
 }
 
 /**
+ * PTO request submitted email template (to manager)
+ */
+export function ptoRequestSubmittedTemplate(
+  employee: { firstName: string; lastName: string; email: string; position?: string | null },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason: string },
+  manager: { firstName: string; email: string }
+): { subject: string; html: string; text: string } {
+  const subject = `PTO Request from ${employee.firstName} ${employee.lastName}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">🗓️ New PTO Request</h1>
+          <p style="color: #f0f0f0; margin: 10px 0 0 0;">Needs Your Approval</p>
+        </div>
+
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: #f59e0b; margin-top: 0;">PTO Request Submitted</h2>
+
+          <p>Hi ${manager.firstName},</p>
+
+          <p><strong>${employee.firstName} ${employee.lastName}</strong>${employee.position ? ` (${employee.position})` : ''} has submitted a PTO request that requires your approval.</p>
+
+          <div style="background: #fef3c7; padding: 20px; border-left: 4px solid #f59e0b; margin: 25px 0;">
+            <h3 style="margin: 0 0 15px 0; color: #d97706;">Request Details</h3>
+            <p style="margin: 5px 0;"><strong>Employee:</strong> ${employee.firstName} ${employee.lastName}</p>
+            <p style="margin: 5px 0;"><strong>Email:</strong> ${employee.email}</p>
+            <p style="margin: 5px 0;"><strong>Type:</strong> ${request.type}</p>
+            <p style="margin: 5px 0;"><strong>Start Date:</strong> ${new Date(request.startDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>End Date:</strong> ${new Date(request.endDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>Duration:</strong> ${request.days} day${request.days > 1 ? 's' : ''}</p>
+            <p style="margin: 5px 0;"><strong>Reason:</strong> ${request.reason}</p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <p style="margin-bottom: 15px;">Please review this request in the HR portal.</p>
+          </div>
+
+          <p style="margin-top: 30px;">Best regards,<br><strong>Roof ER HR Team</strong></p>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">This is an automated message from Roof ER Command Center.</p>
+          <p style="margin: 10px 0 0 0;">© ${new Date().getFullYear()} Roof ER. All rights reserved.</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = `
+🗓️ New PTO Request - Needs Your Approval
+
+Hi ${manager.firstName},
+
+${employee.firstName} ${employee.lastName}${employee.position ? ` (${employee.position})` : ''} has submitted a PTO request that requires your approval.
+
+REQUEST DETAILS:
+Employee: ${employee.firstName} ${employee.lastName}
+Email: ${employee.email}
+Type: ${request.type}
+Start Date: ${new Date(request.startDate).toLocaleDateString()}
+End Date: ${new Date(request.endDate).toLocaleDateString()}
+Duration: ${request.days} day${request.days > 1 ? 's' : ''}
+Reason: ${request.reason}
+
+Please review this request in the HR portal.
+
+Best regards,
+Roof ER HR Team
+
+---
+This is an automated message from Roof ER Command Center.
+© ${new Date().getFullYear()} Roof ER. All rights reserved.
+  `.trim();
+
+  return { subject, html, text };
+}
+
+/**
+ * PTO approved email template (to employee)
+ */
+export function ptoApprovedTemplate(
+  employee: { firstName: string; lastName: string; email: string },
+  request: { startDate: string; endDate: string; days: number; type: string },
+  approver: { firstName: string; lastName: string }
+): { subject: string; html: string; text: string } {
+  const subject = `PTO Request Approved - ${new Date(request.startDate).toLocaleDateString()}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">✅ PTO Request Approved</h1>
+          <p style="color: #f0f0f0; margin: 10px 0 0 0;">Your time off has been approved</p>
+        </div>
+
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: #10b981; margin-top: 0;">Great News!</h2>
+
+          <p>Hi ${employee.firstName},</p>
+
+          <p>Your PTO request has been <strong>approved</strong> by ${approver.firstName} ${approver.lastName}.</p>
+
+          <div style="background: #f0fdf4; padding: 20px; border-left: 4px solid #10b981; margin: 25px 0;">
+            <h3 style="margin: 0 0 15px 0; color: #10b981;">Approved Time Off</h3>
+            <p style="margin: 5px 0;"><strong>Type:</strong> ${request.type}</p>
+            <p style="margin: 5px 0;"><strong>Start Date:</strong> ${new Date(request.startDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>End Date:</strong> ${new Date(request.endDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>Duration:</strong> ${request.days} day${request.days > 1 ? 's' : ''}</p>
+          </div>
+
+          <p style="background: #dbeafe; padding: 15px; border-radius: 4px; border-left: 4px solid #3b82f6;">
+            <strong>📅 Reminder:</strong><br>
+            You'll receive a reminder email 1 day before your time off begins.
+          </p>
+
+          <p style="margin-top: 30px;">Enjoy your time off!</p>
+
+          <p>Best regards,<br><strong>Roof ER HR Team</strong></p>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">This is an automated message from Roof ER Command Center.</p>
+          <p style="margin: 10px 0 0 0;">© ${new Date().getFullYear()} Roof ER. All rights reserved.</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = `
+✅ PTO Request Approved - Your time off has been approved
+
+Hi ${employee.firstName},
+
+Your PTO request has been approved by ${approver.firstName} ${approver.lastName}.
+
+APPROVED TIME OFF:
+Type: ${request.type}
+Start Date: ${new Date(request.startDate).toLocaleDateString()}
+End Date: ${new Date(request.endDate).toLocaleDateString()}
+Duration: ${request.days} day${request.days > 1 ? 's' : ''}
+
+📅 Reminder: You'll receive a reminder email 1 day before your time off begins.
+
+Enjoy your time off!
+
+Best regards,
+Roof ER HR Team
+
+---
+This is an automated message from Roof ER Command Center.
+© ${new Date().getFullYear()} Roof ER. All rights reserved.
+  `.trim();
+
+  return { subject, html, text };
+}
+
+/**
+ * PTO denied email template (to employee)
+ */
+export function ptoDeniedTemplate(
+  employee: { firstName: string; lastName: string },
+  request: { startDate: string; endDate: string; days: number; type: string },
+  approver: { firstName: string; lastName: string },
+  reason?: string
+): { subject: string; html: string; text: string } {
+  const subject = `PTO Request Update - ${new Date(request.startDate).toLocaleDateString()}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">📋 PTO Request Update</h1>
+          <p style="color: #f0f0f0; margin: 10px 0 0 0;">Status Update on Your Request</p>
+        </div>
+
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: #ef4444; margin-top: 0;">Request Not Approved</h2>
+
+          <p>Hi ${employee.firstName},</p>
+
+          <p>We regret to inform you that your PTO request has not been approved at this time.</p>
+
+          <div style="background: #fef2f2; padding: 20px; border-left: 4px solid #ef4444; margin: 25px 0;">
+            <h3 style="margin: 0 0 15px 0; color: #dc2626;">Request Details</h3>
+            <p style="margin: 5px 0;"><strong>Type:</strong> ${request.type}</p>
+            <p style="margin: 5px 0;"><strong>Start Date:</strong> ${new Date(request.startDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>End Date:</strong> ${new Date(request.endDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>Duration:</strong> ${request.days} day${request.days > 1 ? 's' : ''}</p>
+            <p style="margin: 5px 0;"><strong>Reviewed by:</strong> ${approver.firstName} ${approver.lastName}</p>
+            ${reason ? `<p style="margin: 15px 0 5px 0;"><strong>Reason:</strong></p><p style="margin: 5px 0;">${reason}</p>` : ''}
+          </div>
+
+          <p style="background: #dbeafe; padding: 15px; border-radius: 4px; border-left: 4px solid #3b82f6;">
+            <strong>Next Steps:</strong><br>
+            Please reach out to ${approver.firstName} ${approver.lastName} or your HR representative to discuss alternative dates or options.
+          </p>
+
+          <p style="margin-top: 30px;">Best regards,<br><strong>Roof ER HR Team</strong></p>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">This is an automated message from Roof ER Command Center.</p>
+          <p style="margin: 10px 0 0 0;">© ${new Date().getFullYear()} Roof ER. All rights reserved.</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = `
+📋 PTO Request Update - Status Update on Your Request
+
+Hi ${employee.firstName},
+
+We regret to inform you that your PTO request has not been approved at this time.
+
+REQUEST DETAILS:
+Type: ${request.type}
+Start Date: ${new Date(request.startDate).toLocaleDateString()}
+End Date: ${new Date(request.endDate).toLocaleDateString()}
+Duration: ${request.days} day${request.days > 1 ? 's' : ''}
+Reviewed by: ${approver.firstName} ${approver.lastName}
+${reason ? `\nReason: ${reason}` : ''}
+
+Next Steps: Please reach out to ${approver.firstName} ${approver.lastName} or your HR representative to discuss alternative dates or options.
+
+Best regards,
+Roof ER HR Team
+
+---
+This is an automated message from Roof ER Command Center.
+© ${new Date().getFullYear()} Roof ER. All rights reserved.
+  `.trim();
+
+  return { subject, html, text };
+}
+
+/**
+ * PTO reminder email template (1 day before)
+ */
+export function ptoReminderTemplate(
+  employee: { firstName: string; lastName: string },
+  request: { startDate: string; endDate: string; days: number; type: string }
+): { subject: string; html: string; text: string } {
+  const subject = `Reminder: Your PTO Starts Tomorrow`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">🏖️ PTO Reminder</h1>
+          <p style="color: #f0f0f0; margin: 10px 0 0 0;">Your time off starts tomorrow</p>
+        </div>
+
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: #667eea; margin-top: 0;">Time Off Reminder</h2>
+
+          <p>Hi ${employee.firstName},</p>
+
+          <p>This is a friendly reminder that your approved time off begins <strong>tomorrow</strong>.</p>
+
+          <div style="background: #e3f2fd; padding: 20px; border-left: 4px solid #2196f3; margin: 25px 0;">
+            <h3 style="margin: 0 0 15px 0; color: #1976d2;">Your Time Off</h3>
+            <p style="margin: 5px 0;"><strong>Type:</strong> ${request.type}</p>
+            <p style="margin: 5px 0;"><strong>Start Date:</strong> ${new Date(request.startDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>End Date:</strong> ${new Date(request.endDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>Duration:</strong> ${request.days} day${request.days > 1 ? 's' : ''}</p>
+          </div>
+
+          <h3 style="color: #667eea;">Before You Go</h3>
+          <ul style="line-height: 1.8;">
+            <li>Complete any urgent tasks</li>
+            <li>Set up your out-of-office message</li>
+            <li>Notify your team and clients</li>
+            <li>Hand off any critical responsibilities</li>
+          </ul>
+
+          <p style="margin-top: 30px;">Enjoy your time off!</p>
+
+          <p>Best regards,<br><strong>Roof ER HR Team</strong></p>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">This is an automated message from Roof ER Command Center.</p>
+          <p style="margin: 10px 0 0 0;">© ${new Date().getFullYear()} Roof ER. All rights reserved.</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = `
+🏖️ PTO Reminder - Your time off starts tomorrow
+
+Hi ${employee.firstName},
+
+This is a friendly reminder that your approved time off begins tomorrow.
+
+YOUR TIME OFF:
+Type: ${request.type}
+Start Date: ${new Date(request.startDate).toLocaleDateString()}
+End Date: ${new Date(request.endDate).toLocaleDateString()}
+Duration: ${request.days} day${request.days > 1 ? 's' : ''}
+
+BEFORE YOU GO:
+- Complete any urgent tasks
+- Set up your out-of-office message
+- Notify your team and clients
+- Hand off any critical responsibilities
+
+Enjoy your time off!
+
+Best regards,
+Roof ER HR Team
+
+---
+This is an automated message from Roof ER Command Center.
+© ${new Date().getFullYear()} Roof ER. All rights reserved.
+  `.trim();
+
+  return { subject, html, text };
+}
+
+/**
  * Offer letter email template
  */
 export function offerLetterTemplate(

@@ -85,6 +85,13 @@ export const users = pgTable('users', {
   preferredState: text('preferred_state').$type<'VA' | 'MD' | 'PA'>(),
   preferredAiProvider: text('preferred_ai_provider').$type<'gemini' | 'openai' | 'groq' | 'anthropic'>().default('gemini'),
 
+  // Public Profile fields
+  slug: text('slug').unique(), // URL-friendly identifier like "john-smith-a1b2"
+  isPublicProfile: boolean('is_public_profile').notNull().default(false),
+  publicBio: text('public_bio'),
+  publicPhone: text('public_phone'),
+  publicEmail: text('public_email'),
+
   // Status & Auth
   isActive: boolean('is_active').notNull().default(true),
   mustChangePassword: boolean('must_change_password').notNull().default(false),
@@ -700,6 +707,25 @@ export const playerBadges = pgTable('player_badges', {
   earnedAt: timestamp('earned_at').defaultNow().notNull(),
 });
 
+// Sales Performance Tracking
+export const salesPerformance = pgTable('sales_performance', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  salesRepId: integer('sales_rep_id').references(() => salesReps.id), // Optional link to sales rep
+  month: integer('month').notNull(), // 1-12
+  year: integer('year').notNull(),
+  revenue: real('revenue').default(0),
+  target: real('target').default(0),
+  dealsWon: integer('deals_won').default(0),
+  dealsPending: integer('deals_pending').default(0),
+  dealsLost: integer('deals_lost').default(0),
+  commission: real('commission').default(0),
+  commissionRate: real('commission_rate').default(0.1), // 10% default
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // ============================================================================
 // TRAINING SCHEMA - Sessions, Achievements, Curriculum
 // ============================================================================
@@ -1306,6 +1332,8 @@ export type PlayerProfile = typeof playerProfiles.$inferSelect;
 export type PlayerBadge = typeof playerBadges.$inferSelect;
 export type TrainingCertificate = typeof trainingCertificates.$inferSelect;
 export type NewTrainingCertificate = typeof trainingCertificates.$inferInsert;
+export type SalesPerformance = typeof salesPerformance.$inferSelect;
+export type NewSalesPerformance = typeof salesPerformance.$inferInsert;
 
 // ============================================================================
 // NOTIFICATIONS
@@ -1394,12 +1422,16 @@ export const emailNotifications = pgTable('email_notifications', {
     | 'offer_sent'
     | 'welcome'
     | 'onboarding_reminder'
+    | 'pto_submitted'
+    | 'pto_approved'
+    | 'pto_denied'
+    | 'pto_reminder'
   >().notNull(),
   status: text('status').$type<'pending' | 'sent' | 'failed' | 'bounced'>().default('pending').notNull(),
   sentAt: timestamp('sent_at'),
   errorMessage: text('error_message'),
   retryCount: integer('retry_count').default(0),
-  metadata: jsonb('metadata'), // Store candidateId, interviewId, etc.
+  metadata: jsonb('metadata'), // Store candidateId, interviewId, ptoRequestId, etc.
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -1412,3 +1444,54 @@ export const insertEmailNotificationSchema = createInsertSchema(emailNotificatio
 
 export type EmailNotification = typeof emailNotifications.$inferSelect;
 export type NewEmailNotification = typeof emailNotifications.$inferInsert;
+
+// ============================================================================
+// SAFETY INCIDENTS - Safety Incident Tracking with Escalation
+// ============================================================================
+
+export const safetyIncidents = pgTable('safety_incidents', {
+  id: serial('id').primaryKey(),
+  reportedBy: integer('reported_by').notNull().references(() => users.id),
+  assignedTo: integer('assigned_to').references(() => users.id),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  location: text('location'),
+  incidentDate: timestamp('incident_date').notNull(),
+  severity: text('severity').$type<'low' | 'medium' | 'high' | 'critical'>().notNull(),
+  status: text('status').$type<'reported' | 'investigating' | 'resolved' | 'closed'>().default('reported').notNull(),
+  category: text('category').$type<'injury' | 'near_miss' | 'property_damage' | 'environmental' | 'other'>(),
+  injuryType: text('injury_type'),
+  witnesses: text('witnesses'),
+  actionsTaken: text('actions_taken'),
+  preventiveMeasures: text('preventive_measures'),
+  resolvedAt: timestamp('resolved_at'),
+  resolvedBy: integer('resolved_by').references(() => users.id),
+  lastEscalatedAt: timestamp('last_escalated_at'),
+  escalationCount: integer('escalation_count').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const safetyIncidentsRelations = relations(safetyIncidents, ({ one }) => ({
+  reporter: one(users, {
+    fields: [safetyIncidents.reportedBy],
+    references: [users.id],
+  }),
+  assignee: one(users, {
+    fields: [safetyIncidents.assignedTo],
+    references: [users.id],
+  }),
+  resolver: one(users, {
+    fields: [safetyIncidents.resolvedBy],
+    references: [users.id],
+  }),
+}));
+
+export const insertSafetyIncidentSchema = createInsertSchema(safetyIncidents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type SafetyIncident = typeof safetyIncidents.$inferSelect;
+export type NewSafetyIncident = typeof safetyIncidents.$inferInsert;

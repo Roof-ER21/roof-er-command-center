@@ -15,6 +15,7 @@ const require = createRequire(import.meta.url);
 const pdfParse = require("pdf-parse");
 import crypto from "crypto";
 import { generateDamageAssessmentPDF, generateInspectionReportPDF } from "../../utils/pdf-generator.js";
+import { getStorageService, isUrl } from "../../services/blob-storage.js";
 
 // Configure multer for in-memory uploads (for document analysis)
 const memoryStorage = multer.memoryStorage();
@@ -1413,8 +1414,8 @@ Return ONLY valid JSON, no markdown formatting.`;
 // DOCUMENT LIBRARY ENDPOINTS
 // ============================================================================
 
-// Upload document
-router.post("/documents/upload", uploadDisk.single('document'), async (req: Request, res: Response) => {
+// Upload document - Now uses Vercel Blob or local storage
+router.post("/documents/upload", uploadMemory.single('document'), async (req: Request, res: Response) => {
   try {
     const file = req.file;
     const userId = (req as any).session?.userId;
@@ -1442,9 +1443,7 @@ router.post("/documents/upload", uploadDisk.single('document'), async (req: Requ
     let analysisResult = null;
     if (req.body.analyzeWithAI === 'true' && susanAI.isAvailable()) {
       try {
-        // Read the file for analysis
-        const fileBuffer = fs.readFileSync(file.path);
-        const { text } = await extractTextFromDocument(fileBuffer, file.mimetype, file.originalname);
+        const { text } = await extractTextFromDocument(file.buffer, file.mimetype, file.originalname);
 
         if (text && text.trim().length >= 50) {
           const analysis = await susanAI.analyzeDocument(
@@ -1460,12 +1459,20 @@ router.post("/documents/upload", uploadDisk.single('document'), async (req: Requ
       }
     }
 
+    // Upload to storage (Vercel Blob or local)
+    const storageService = getStorageService();
+    const storagePathOrUrl = await storageService.uploadFile(
+      file.buffer,
+      file.originalname,
+      'documents'
+    );
+
     // Save to database
     const [document] = await db
       .insert(schema.fieldDocuments)
       .values({
         userId,
-        filename: file.filename,
+        filename: path.basename(storagePathOrUrl), // Extract filename from path/URL
         originalName: file.originalname,
         mimeType: file.mimetype,
         fileSize: file.size,
@@ -1473,7 +1480,7 @@ router.post("/documents/upload", uploadDisk.single('document'), async (req: Requ
         tags: parsedTags,
         description: description || null,
         analysisResult: analysisResult || null,
-        storagePath: file.path,
+        storagePath: storagePathOrUrl, // This is now either a URL or local path
       })
       .returning();
 
@@ -1486,16 +1493,11 @@ router.post("/documents/upload", uploadDisk.single('document'), async (req: Requ
         size: document.fileSize,
         uploadedAt: document.uploadedAt,
         hasAnalysis: !!analysisResult,
+        storageType: storageService.getStorageType(),
       },
     });
   } catch (error) {
     console.error("Document upload error:", error);
-    // Clean up file if database insert failed
-    if (req.file?.path) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch {}
-    }
     res.status(500).json({ success: false, error: "Failed to upload document" });
   }
 });
@@ -1609,7 +1611,7 @@ router.get("/documents/:id", async (req: Request, res: Response) => {
   }
 });
 
-// Download document
+// Download document - Works with both Blob URLs and local paths
 router.get("/documents/:id/download", async (req: Request, res: Response) => {
   try {
     const userId = (req as any).session?.userId;
@@ -1629,29 +1631,32 @@ router.get("/documents/:id/download", async (req: Request, res: Response) => {
       });
     }
 
-    // Check if file exists
-    if (!fs.existsSync(document.storagePath)) {
-      return res.status(404).json({
-        success: false,
-        error: "File not found on disk",
-      });
-    }
-
     // Update last accessed timestamp
     await db
       .update(schema.fieldDocuments)
       .set({ lastAccessedAt: new Date() })
       .where(eq(schema.fieldDocuments.id, parseInt(id)));
 
-    // Send file
-    res.download(document.storagePath, document.originalName);
+    // Check if it's a URL (Blob storage) or local path
+    if (isUrl(document.storagePath)) {
+      // Blob storage - redirect to the URL
+      res.redirect(document.storagePath);
+    } else {
+      // Local storage - serve the file
+      const storageService = getStorageService();
+      const fileBuffer = await storageService.downloadFile(document.storagePath);
+
+      res.setHeader('Content-Type', document.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${document.originalName}"`);
+      res.send(fileBuffer);
+    }
   } catch (error) {
     console.error("Download document error:", error);
     res.status(500).json({ success: false, error: "Failed to download document" });
   }
 });
 
-// Delete document
+// Delete document - Works with both Blob URLs and local paths
 router.delete("/documents/:id", async (req: Request, res: Response) => {
   try {
     const userId = (req as any).session?.userId;
@@ -1671,14 +1676,13 @@ router.delete("/documents/:id", async (req: Request, res: Response) => {
       });
     }
 
-    // Delete file from disk
+    // Delete file from storage (Blob or local)
     try {
-      if (fs.existsSync(document.storagePath)) {
-        fs.unlinkSync(document.storagePath);
-      }
-    } catch (fsError) {
-      console.error("Failed to delete file from disk:", fsError);
-      // Continue with database deletion even if file deletion fails
+      const storageService = getStorageService();
+      await storageService.deleteFile(document.storagePath);
+    } catch (storageError) {
+      console.error("Failed to delete file from storage:", storageError);
+      // Continue with database deletion even if storage deletion fails
     }
 
     // Delete from database

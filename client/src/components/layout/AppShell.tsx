@@ -42,6 +42,8 @@ import {
   BookOpen,
   Moon,
   Sun,
+  DollarSign,
+  Target,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth, useModuleAccess } from "@/hooks/useAuth";
@@ -109,6 +111,7 @@ export function AppShell() {
       color: "text-green-600",
       children: [
         { name: "Rankings", href: "/leaderboard", icon: Trophy, show: hasLeaderboardAccess },
+        { name: "Sales Performance", href: "/sales", icon: DollarSign, show: hasLeaderboardAccess },
         { name: "Contests", href: "/leaderboard/contests", icon: Award, show: hasLeaderboardAccess },
         { name: "Teams", href: "/leaderboard/teams", icon: UsersRound, show: hasLeaderboardAccess },
         { name: "TV Display", href: "/leaderboard/tv", icon: Tv, show: hasLeaderboardAccess },
