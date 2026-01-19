@@ -45,9 +45,7 @@ export function PinLoginPage() {
     <Card>
       <CardHeader className="space-y-1">
         <div className="lg:hidden flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold">RE</span>
-          </div>
+          <img src="/logo.png" alt="Roof ER" className="w-12 h-12 rounded-lg object-contain" />
           <div>
             <h1 className="text-lg font-bold">Roof ER</h1>
             <p className="text-xs text-muted-foreground">Training Center</p>

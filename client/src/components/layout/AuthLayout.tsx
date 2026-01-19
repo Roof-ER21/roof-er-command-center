@@ -21,10 +21,8 @@ export function AuthLayout() {
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-red-700 to-red-900 p-12 flex-col justify-between text-white">
         <div>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <span className="text-2xl font-bold">RE</span>
-            </div>
+          <div className="flex items-center gap-4">
+            <img src="/logo.png" alt="Roof ER Command Center" className="w-16 h-16 rounded-xl object-contain" />
             <div>
               <h1 className="text-2xl font-bold">Roof ER</h1>
               <p className="text-sm opacity-80">Command Center</p>
