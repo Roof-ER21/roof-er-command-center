@@ -35,6 +35,9 @@ const __dirname = dirname(__filename);
 const app = express();
 const httpServer = createServer(app);
 
+// Trust Railway's reverse proxy (required for secure cookies)
+app.set('trust proxy', 1);
+
 // Socket.IO setup
 const io = new SocketIOServer(httpServer, {
   cors: {
