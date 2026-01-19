@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { requireAuth } from "../../middleware/auth.js";
 import { susanAI, ModuleContext } from "../../services/susan-ai.js";
+import { getUnifiedUserContext } from "../../services/ai-context.js";
 
 const router = Router();
 
@@ -44,6 +45,9 @@ router.post("/chat", async (req: Request, res: Response) => {
       });
     }
 
+    // Fetch unified user context (HR, Sales, Training stats)
+    const userContext = req.user?.id ? await getUnifiedUserContext(req.user.id) : "";
+
     // Call Susan AI
     const response = await susanAI.chat(message, {
       context: (context as ModuleContext) || "general",
@@ -51,6 +55,7 @@ router.post("/chat", async (req: Request, res: Response) => {
       temperature,
       maxTokens,
       includeKnowledgeBase: includeKnowledgeBase ?? true,
+      userContext,
     });
 
     res.json({
@@ -94,6 +99,9 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
+    // Fetch unified user context
+    const userContext = req.user?.id ? await getUnifiedUserContext(req.user.id) : "";
+
     // Stream the response
     const stream = susanAI.chatStream(message, {
       context: (context as ModuleContext) || "general",
@@ -101,6 +109,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
       temperature,
       maxTokens,
       includeKnowledgeBase: true,
+      userContext,
     });
 
     for await (const chunk of stream) {

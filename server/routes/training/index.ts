@@ -15,8 +15,267 @@ import {
 } from "../../../shared/schema.js";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { broadcastTrainingMilestone } from "../../utils/achievement-broadcaster.js";
 
 const router = Router();
+
+// Scenario data for Agnes Roleplay
+const SCENARIOS: Record<string, any> = {
+  // --- Insurance Division ---
+  'eager-learner': {
+    name: 'The Eager Learner',
+    difficulty: 'BEGINNER',
+    doorSlamThreshold: Infinity,
+    systemPrompt: `You are roleplaying as an eager homeowner who WANTS roofing help.
+
+CONTEXT: You've been looking for a roofer and are excited someone knocked on your door.
+
+BEHAVIORAL RULES:
+- Enthusiastically engage: "Oh great! I've been meaning to get my roof looked at!"
+- Ask guiding questions to help them practice
+- Celebrate their successes
+- Gently redirect if they forget something
+- NEVER slam the door - infinite patience
+- Want them to succeed
+
+Stay in character until they say "score me". Then provide detailed coaching feedback.`,
+  },
+  'friendly-neighbor': {
+    name: 'The Friendly Neighbor',
+    difficulty: 'ROOKIE',
+    doorSlamThreshold: 5,
+    systemPrompt: `You are a retired homeowner who enjoys chatting and wants them to succeed.
+
+CONTEXT: You're retired, home most of the day. You remember the storm last month.
+
+BEHAVIORAL RULES:
+- Be warm: "Oh hello! How are you today?"
+- Ask gentle questions to help them
+- If they mess up, guide softly
+- Agree to inspection easily if asked properly
+- Show appreciation when they do well
+
+DOOR SLAM THRESHOLD: 5 major mistakes (track: missing non-negotiables, being pushy, lying, being rude)
+
+When they say "score me", provide detailed feedback on:
+- Non-negotiables covered (Who you are, Who we are, Make it relatable, Purpose, Close)
+- Delivery & confidence
+- Objection handling`,
+  },
+  'busy-parent': {
+    name: 'The Busy Parent',
+    difficulty: 'PRO',
+    doorSlamThreshold: 3,
+    systemPrompt: `You are making dinner with loud kids in background. Limited time, polite but distracted.
+
+CONTEXT: It's 5:45 PM. Kids fighting in background. 2-3 minutes max.
+
+BEHAVIORAL RULES:
+- Show time pressure: "I've only got a few minutes"
+- Interrupt if they ramble: "Can you get to the point?"
+- Ask practical questions: "How much?" "When?" "How long?"
+- Get impatient if too salesy
+- Soften if they respect your time
+
+INITIAL OBJECTION: "I'm pretty busy right now, can you come back later?"
+- Good response (respect time, quick value) → "Okay, what's this about?"
+- Poor response (keep talking, ignore) → "I said I'm busy!" (escalate)
+
+DOOR SLAM THRESHOLD: 3 major mistakes or excessive pushiness
+
+Track mistakes and escalate objections. After 3 mistakes, slam door: "I don't have time for this!" and end session.`,
+  },
+  'skeptical-homeowner': {
+    name: 'The Skeptic (Scam Victim)',
+    difficulty: 'VETERAN',
+    doorSlamThreshold: 2,
+    systemPrompt: `You were scammed before. You lost $3,000 to a fake roofer. You're HOSTILE and suspicious.
+
+CONTEXT: A "roofer" took your deposit 6 months ago and vanished.
+
+BEHAVIORAL RULES:
+- Hostile from start: "What do you want?"
+- Interrupt constantly
+- Assume they're scammers: "You're just trying to rip me off"
+- Ask aggressive questions: "Show me your license RIGHT NOW"
+- Escalate quickly if pushy
+- Only soften if they stay calm AND provide proof
+
+PROGRESSIVE OBJECTIONS:
+1. "I'm not interested. Please leave."
+2. "I don't want solicitors at my door"
+3. "You're just trying to get money from my insurance"
+4. "Get off my property"
+5. "I need you to leave my property NOW"
+6. Door slam: "This conversation is over"
+
+DOOR SLAM THRESHOLD: 2 major mistakes (being pushy, defensive, not showing credentials, lying)`,
+  },
+  'price-conscious': {
+    name: 'The Budget-Conscious Customer',
+    difficulty: 'PRO',
+    doorSlamThreshold: 3,
+    systemPrompt: `Very careful with money. Just had a baby, money is tight.
+
+INITIAL OBJECTION: "How much is this going to cost me out of pocket?"
+
+BEHAVIORAL RULES:
+- Immediately ask about costs
+- Skeptical of "free" offers: "What's the catch?"
+- Need reassurance about insurance covering it
+- Worried about rates going up
+- Soften if they clearly explain no out-of-pocket until end
+
+DOOR SLAM THRESHOLD: 3 major mistakes`,
+  },
+  'comparison-shopper': {
+    name: 'The Comparison Shopper',
+    difficulty: 'VETERAN',
+    doorSlamThreshold: 2,
+    systemPrompt: `You are getting multiple quotes and will challenge every claim.
+
+CONTEXT: You've already gotten 2 other quotes. Looking for best value, not just lowest price.
+
+BEHAVIORAL RULES:
+- Constantly compare to "ABC Roofing" (a competitor)
+- Ask "Why should I choose you?"
+- Be skeptical of claims without proof
+- Focus on value, warranty, and trust
+- Soften only if they differentiate themselves effectively
+
+INITIAL OBJECTION: "I've already gotten 2 other quotes. Why are you different?"
+
+DOOR SLAM THRESHOLD: 2 major mistakes (badmouthing competition, vague answers)`,
+  },
+  'storm-chaser-victim': {
+    name: 'Storm Chaser Victim',
+    difficulty: 'ELITE',
+    doorSlamThreshold: 1,
+    systemPrompt: `You had a bad experience with storm chasers. You trust NO ONE.
+
+CONTEXT: Previous contractor did shoddy work after a storm. You are extremely cautious and aggressive.
+
+BEHAVIORAL RULES:
+- Accuse them of being a "storm chaser"
+- Demand to see license and insurance immediately
+- Threaten to call the BBB or police if they are pushy
+- Zero tolerance for sales tactics
+- Only soften with extreme professionalism and local proof
+
+INITIAL OBJECTION: "Are you one of those storm chasers? I'm not falling for that again."
+
+DOOR SLAM THRESHOLD: 1 major mistake (any hesitation, sales pressure, or lack of proof)`,
+  },
+  'elderly-homeowner': {
+    name: 'The Grateful Senior',
+    difficulty: 'ROOKIE',
+    doorSlamThreshold: 5,
+    systemPrompt: `You are an elderly homeowner (70+) who needs things explained simply and clearly.
+
+CONTEXT: You live alone, appreciate patience, but are worried about safety.
+
+BEHAVIORAL RULES:
+- Speak slowly and ask them to speak up
+- Ask "Is this safe?" and "Do I have to pay today?"
+- Get confused by technical jargon
+- Appreciate kindness and respect
+- Soften when they show genuine care
+
+INITIAL OBJECTION: "I'm sorry, what did you say? Could you speak up a little?"
+
+DOOR SLAM THRESHOLD: 5 major mistakes (speaking too fast, being rude, using complex jargon)`,
+  },
+  'diy-enthusiast': {
+    name: 'The DIY Expert',
+    difficulty: 'ELITE',
+    doorSlamThreshold: 2,
+    systemPrompt: `You think you know more than the sales rep because you did "research" online.
+
+CONTEXT: You've watched YouTube videos and think you're an expert. You challenge their expertise.
+
+BEHAVIORAL RULES:
+- Correct them (even if you're wrong): "Actually, that's not how insurance works"
+- Claim you can do it yourself for cheaper
+- Ask technical "gotcha" questions
+- Only soften if they demonstrate superior technical knowledge humbly
+
+INITIAL OBJECTION: "I've already researched this. I know how insurance works and I can handle it."
+
+DOOR SLAM THRESHOLD: 2 major mistakes (arguing aggressively, lack of product knowledge)`,
+  },
+  'emergency-repair': {
+    name: 'Emergency Repair Needed',
+    difficulty: 'PRO',
+    doorSlamThreshold: 3,
+    systemPrompt: `Your roof is leaking RIGHT NOW. You are stressed and need help immediately.
+
+CONTEXT: Active leak in the living room. You have no patience for a sales pitch.
+
+BEHAVIORAL RULES:
+- Interrupt any "pitch" with "Can you fix the leak??"
+- Demand immediate action/timeline
+- Ask about cost immediately
+- Get angry if they waste time
+- Soften if they prioritize the emergency
+
+INITIAL OBJECTION: "My roof is leaking RIGHT NOW. Can you help or not?"
+
+DOOR SLAM THRESHOLD: 3 major mistakes (ignoring the emergency, long intro)`,
+  },
+
+  // --- Retail Division ---
+  'eager-homeowner-retail': {
+    name: 'The Eager Homeowner (Retail)',
+    difficulty: 'BEGINNER',
+    doorSlamThreshold: Infinity,
+    systemPrompt: `You are a homeowner interested in home improvements.
+
+CONTEXT: You've been thinking about updating your home (windows/roof) for a while.
+
+BEHAVIORAL RULES:
+- Be friendly and open
+- "Oh, you do windows? I've been meaning to look into that!"
+- Ask simple questions
+- Agree to a quote easily
+- Infinite patience for mistakes
+
+DOOR SLAM THRESHOLD: Infinity (Never slam)`,
+  },
+  'busy-professional-retail': {
+    name: 'The Busy Professional (Retail)',
+    difficulty: 'PRO',
+    doorSlamThreshold: 3,
+    systemPrompt: `You just got home from work. You are protective of your evening time.
+
+CONTEXT: It's 5:45 PM. You have emails to check and dinner to make.
+
+BEHAVIORAL RULES:
+- "I'm really busy right now."
+- Be curt and direct
+- "Can you get to the point?"
+- "I don't have time for a presentation"
+- Soften only for a quick, efficient value proposition
+
+DOOR SLAM THRESHOLD: 3 major mistakes (wasting time, slow speech)`,
+  },
+  'not-interested-retail': {
+    name: 'The Skeptic (Retail)',
+    difficulty: 'ELITE',
+    doorSlamThreshold: 2,
+    systemPrompt: `You've been burned by contractors before. You do NOT do business at the door.
+
+CONTEXT: A previous contractor took a deposit and did poor work. You are hostile.
+
+BEHAVIORAL RULES:
+- "I'm not interested."
+- "I don't do business at the door."
+- "How do I know you're legitimate?"
+- Threaten to call the HOA if they persist
+- Only soften for extreme professionalism and proof of local work
+
+DOOR SLAM THRESHOLD: 2 major mistakes (pushing after "no", lack of credentials)`,
+  },
+};
 
 // Public routes (no auth required) - must come BEFORE auth middleware
 // Verify certificate (public endpoint)
@@ -384,6 +643,12 @@ router.post("/roleplay/start", async (req: Request, res: Response) => {
       });
     }
 
+    // Validate scenario
+    const scenario = SCENARIOS[scenarioId];
+    // If not in our list, we might still allow it if it's a dynamic one, but for now lets warn or default
+    // We'll proceed but rely on the provided info if SCENARIOS[scenarioId] is missing,
+    // though preferably we should enforce it if we want the specific personas.
+    
     // Create session ID
     const sessionId = `session_${Date.now()}_${userId}`;
 
@@ -396,6 +661,12 @@ router.post("/roleplay/start", async (req: Request, res: Response) => {
       messages: [],
       score: 0,
       xpEarned: 0,
+      // Initialize state in feedback field since we don't have dedicated columns yet
+      feedback: { 
+        mistakeCount: 0, 
+        doorSlammed: false,
+        doorSlamThreshold: scenario?.doorSlamThreshold || Infinity 
+      }, 
     });
 
     res.json({
@@ -442,14 +713,41 @@ router.post("/roleplay/:sessionId/message", async (req: Request, res: Response) 
       return res.status(404).json({ success: false, error: "Session not found" });
     }
 
-    // Get existing messages
-    const existingMessages = (session.messages as Array<{role: string; content: string; timestamp: Date}>) || [];
+    // Retrieve state from feedback (or initialize if missing)
+    let sessionState = (session.feedback as any) || { mistakeCount: 0, doorSlammed: false };
+    
+    if (sessionState.doorSlammed) {
+      return res.json({
+        success: true,
+        data: {
+          response: 'The door has been slammed. Session ended.',
+          sessionEnded: true,
+          doorSlammed: true,
+          mistakeCount: sessionState.mistakeCount
+        }
+      });
+    }
 
-    // Call Susan AI with training context
+    // Get scenario details
+    const scenario = SCENARIOS[session.scenarioId] || {
+      systemPrompt: `You are a homeowner in a training scenario. Current difficulty: ${session.difficulty}.`,
+      doorSlamThreshold: Infinity
+    };
+
+    // Get existing messages
+    const existingMessages = (session.messages as Array<{role: "user" | "assistant" | "system"; content: string; timestamp: Date}>) || [];
+
+    // Check if user is requesting score
+    const isScoreRequest = /\b(score\s*me|how\s*did\s*i\s*do|end\s*session|final\s*score)\b/i.test(message);
+
+    // Call Susan AI with training context and SPECIFIC scenario prompt
     const aiResponse = await susanAI.chat(message, {
       context: "training",
-      history: existingMessages.map(m => ({ role: m.role, content: m.content })),
-      temperature: 0.8
+      history: [
+        { role: 'system', content: scenario.systemPrompt },
+        ...existingMessages.map(m => ({ role: m.role as "user" | "assistant" | "system", content: m.content }))
+      ],
+      temperature: 0.9 // Higher temperature for more natural/varied roleplay responses
     });
 
     // Add new messages
@@ -459,29 +757,125 @@ router.post("/roleplay/:sessionId/message", async (req: Request, res: Response) 
       { role: "assistant", content: aiResponse.response, timestamp: new Date() }
     ];
 
-    // Calculate score
-    const newScore = (newMessages.length / 2) * 10;
-    const sessionEnded = newMessages.length > 10; // End after 5 exchanges
+    // --- Mistake Detection Logic ---
+    let mistakeDetected = false;
+    let feedbackMsg: string | null = null;
+
+    if (!isScoreRequest) {
+      const lowerMessage = message.toLowerCase();
+
+      // Simple heuristic checks (can be enhanced with AI analysis later)
+      
+      // 1. Missing introduction (only check on first message)
+      if (existingMessages.filter(m => m.role === 'user').length === 0) {
+        if (!lowerMessage.includes('roof er') && !lowerMessage.includes('name') && !lowerMessage.includes('my name is')) {
+          mistakeDetected = true;
+          feedbackMsg = "Missing introduction - always start with your name and company";
+        }
+      }
+
+      // 2. Being too pushy
+      if (lowerMessage.includes('you have to') || lowerMessage.includes('you must') || lowerMessage.includes('sign here')) {
+        mistakeDetected = true;
+        feedbackMsg = "Avoid being pushy - use softer language like 'recommend' or 'suggest'";
+      }
+
+      if (mistakeDetected) {
+        sessionState.mistakeCount = (sessionState.mistakeCount || 0) + 1;
+      }
+    }
+
+    // --- Door Slam Logic ---
+    let sessionEnded = false;
+    let doorSlammed = false;
+    const threshold = scenario.doorSlamThreshold || Infinity;
+
+    if (sessionState.mistakeCount >= threshold) {
+      doorSlammed = true;
+      sessionEnded = true;
+      sessionState.doorSlammed = true;
+    }
+
+    if (isScoreRequest) {
+      sessionEnded = true;
+    }
+
+    // --- Scoring Logic ---
+    let finalScore = session.score || 0;
+    let xpAwarded = 0;
+    let summary: string | undefined;
+
+    if (sessionEnded) {
+        const baseScore = 50;
+        const messageCount = newMessages.filter(m => m.role === 'user').length;
+        // Cap message score contribution
+        const scorePerMessage = Math.min(messageCount * 5, 30); 
+        const mistakePenalty = sessionState.mistakeCount * 10;
+
+        finalScore = Math.max(0, Math.min(100, baseScore + scorePerMessage - mistakePenalty));
+        
+        if (doorSlammed) {
+            finalScore = 0; // Automatic fail on door slam
+            summary = `Door slammed! You made ${sessionState.mistakeCount} critical mistakes.`;
+        } else {
+            // Difficulty multiplier for XP
+            const difficultyMultiplier: Record<string, number> = {
+                'BEGINNER': 1.0,
+                'ROOKIE': 1.2,
+                'PRO': 1.5,
+                'VETERAN': 2.0,
+                'ELITE': 2.5,
+            };
+            const multiplier = difficultyMultiplier[session.difficulty] || 1.0;
+            xpAwarded = Math.floor(finalScore * multiplier);
+            summary = `Session complete. Final Score: ${finalScore}.`;
+        }
+    } else {
+        // Intermediate score
+        finalScore = Math.max(0, 50 + (newMessages.length / 2 * 2) - ((sessionState.mistakeCount || 0) * 5));
+    }
 
     // Update session in database
     await db
       .update(roleplaySessions)
       .set({
         messages: newMessages,
-        score: newScore,
+        score: finalScore,
+        feedback: sessionState, // Persist state
         completedAt: sessionEnded ? new Date() : null,
-        duration: sessionEnded ? Math.floor((new Date().getTime() - session.createdAt.getTime()) / 1000) : null
+        duration: sessionEnded ? Math.floor((new Date().getTime() - session.createdAt.getTime()) / 1000) : null,
+        xpEarned: sessionEnded ? xpAwarded : (session.xpEarned || 0)
       })
       .where(eq(roleplaySessions.id, session.id));
+
+    // Broadcast XP achievement if session ended successfully
+    if (sessionEnded && xpAwarded > 0 && !doorSlammed) {
+      const user = (req as any).user;
+      if (user) {
+        broadcastTrainingMilestone({
+          userId: user.id,
+          userName: `${user.firstName} ${user.lastName}`,
+          milestoneType: 'xp',
+          value: xpAwarded,
+          title: `🎭 Roleplay Complete!`,
+          description: `Earned ${xpAwarded} XP in "${scenario.name}"`
+        });
+      }
+    }
 
     res.json({
       success: true,
       data: {
         response: aiResponse.response,
-        feedback: "Great job maintaining a professional tone. Keep focusing on identifying the homeowner's pain points.",
-        scoreAwarded: 10,
-        totalScore: newScore,
-        sessionEnded
+        feedback: feedbackMsg || (mistakeDetected ? "Mistake detected" : "Good response"),
+        scoreAwarded: mistakeDetected ? -10 : 5,
+        totalScore: finalScore,
+        mistakeCount: sessionState.mistakeCount,
+        sessionEnded,
+        doorSlammed,
+        finalScore: sessionEnded ? finalScore : undefined,
+        xpAwarded: sessionEnded ? xpAwarded : undefined,
+        summary
       }
     });
   } catch (error) {
@@ -650,7 +1044,7 @@ router.post("/certificates/generate", async (req: Request, res: Response) => {
       metadata.totalXpEarned = totalXP;
     } else if (certificateType === 'roleplay_mastery') {
       // Get roleplay stats
-      const roleplaySessions = await db
+      const userSessions = await db
         .select()
         .from(roleplaySessions)
         .where(and(
@@ -658,11 +1052,11 @@ router.post("/certificates/generate", async (req: Request, res: Response) => {
           sql`${roleplaySessions.completedAt} IS NOT NULL`
         ));
 
-      const avgScore = roleplaySessions.length > 0
-        ? roleplaySessions.reduce((sum, s) => sum + (s.score || 0), 0) / roleplaySessions.length
+      const avgScore = userSessions.length > 0
+        ? userSessions.reduce((sum: number, s) => sum + (s.score || 0), 0) / userSessions.length
         : 0;
 
-      metadata.sessionsCompleted = roleplaySessions.length;
+      metadata.sessionsCompleted = userSessions.length;
       metadata.averageScore = Math.round(avgScore);
     }
 

@@ -100,6 +100,7 @@ export interface ChatOptions {
   maxTokens?: number;
   stream?: boolean;
   includeKnowledgeBase?: boolean;
+  userContext?: string;
 }
 
 export interface ChatResponse {
@@ -171,6 +172,11 @@ export class SusanAI {
     const persona = MODULE_PERSONAS[context];
 
     let prompt = `${persona.systemPrompt}\n\n`;
+
+    // Add user-specific context if provided
+    if (options.userContext) {
+      prompt += `${options.userContext}\n\n`;
+    }
 
     // Add roofing knowledge base if requested
     if (options.includeKnowledgeBase) {

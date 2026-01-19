@@ -61,13 +61,12 @@ export function startLeaderboardCron() {
       }
     },
     {
-      scheduled: true,
       timezone: 'UTC', // Use UTC to match Railway/server timezone
     }
   );
 
   console.log('✅ Leaderboard snapshot cron job scheduled');
-  console.log(`   Schedule: ${schedule} (${task.options.timezone})`);
+  console.log(`   Schedule: ${schedule} (UTC)`);
   console.log('   Description: Daily at midnight UTC');
 
   // Optional: Run immediately on startup (for testing)

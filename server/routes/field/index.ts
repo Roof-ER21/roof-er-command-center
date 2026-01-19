@@ -1511,25 +1511,19 @@ router.get("/documents", async (req: Request, res: Response) => {
     const userId = (req as any).session?.userId;
     const { category, search, limit = 20, offset = 0 } = req.query;
 
-    let query = db
+    // Build where conditions first
+    const conditions = [eq(schema.fieldDocuments.userId, userId)];
+    if (category && category !== 'all') {
+      conditions.push(eq(schema.fieldDocuments.category, category as any));
+    }
+
+    const documents = await db
       .select()
       .from(schema.fieldDocuments)
-      .where(eq(schema.fieldDocuments.userId, userId))
+      .where(and(...conditions))
       .orderBy(desc(schema.fieldDocuments.uploadedAt))
       .limit(parseInt(limit as string))
       .offset(parseInt(offset as string));
-
-    // Filter by category if provided
-    if (category && category !== 'all') {
-      query = query.where(
-        and(
-          eq(schema.fieldDocuments.userId, userId),
-          eq(schema.fieldDocuments.category, category as any)
-        )
-      );
-    }
-
-    const documents = await query;
 
     // Filter by search term if provided (in-memory since we need to search multiple fields)
     let filteredDocs = documents;
