@@ -40,7 +40,10 @@ import {
   KeyRound,
   Image,
   BookOpen,
+  Moon,
+  Sun,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useAuth, useModuleAccess } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -61,6 +64,7 @@ export function AppShell() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const location = useLocation();
   const { user, logout, isLogoutPending } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   const hasHRAccess = useModuleAccess('hr');
   const hasLeaderboardAccess = useModuleAccess('leaderboard');
@@ -209,21 +213,41 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-background border-b">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">RE</span>
+      {/* Mobile header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background border-b">
+        <div className="flex items-center justify-between p-3">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xs">RE</span>
+            </div>
           </div>
-          <span className="font-semibold">Command Center</span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Bell className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
+        {/* Mobile breadcrumb */}
+        <div className="px-3 pb-2">
+          <Breadcrumb />
+        </div>
       </div>
 
       {/* Mobile menu overlay */}
@@ -452,14 +476,23 @@ export function AppShell() {
       {/* Main content */}
       <main
         className={cn(
-          "min-h-screen transition-all duration-300 pt-16 lg:pt-0",
+          "min-h-screen transition-all duration-300 pt-24 lg:pt-0",
           sidebarOpen ? "lg:pl-64" : "lg:pl-16"
         )}
       >
         {/* Top bar (desktop) */}
         <header className="hidden lg:flex items-center justify-between h-16 px-6 border-b bg-background">
           <Breadcrumb />
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label="Toggle theme"
+            >
+              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            </Button>
             <Button variant="ghost" size="icon">
               <Bell className="h-5 w-5" />
             </Button>
