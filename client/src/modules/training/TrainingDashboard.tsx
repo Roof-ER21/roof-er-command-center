@@ -15,10 +15,13 @@ import {
   ChevronRight,
   History,
   Trophy,
-  Loader2
+  Loader2,
+  Home,
+  ShoppingCart
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { useState } from "react";
 
 interface QuickAction {
   id: string;
@@ -43,6 +46,7 @@ interface TrainingStats {
 
 export function TrainingDashboard() {
   const { user } = useAuth();
+  const [activeDivision, setActiveDivision] = useState<'insurance' | 'retail'>((user?.division as 'insurance' | 'retail') || 'insurance');
 
   // Fetch training stats from API
   const { data: statsData, isLoading, error } = useQuery({
@@ -142,11 +146,39 @@ export function TrainingDashboard() {
   return (
     <div className="space-y-8 max-w-4xl mx-auto p-6">
       {/* Welcome Header */}
-      <div className="space-y-3">
-        <p className="text-muted-foreground text-sm">{getGreeting()}</p>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-          Welcome back, <span className="text-red-500">{user?.firstName || 'there'}</span>!
-        </h1>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="space-y-3">
+          <p className="text-muted-foreground text-sm">{getGreeting()}</p>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+            Welcome back, <span className="text-red-500">{user?.firstName || 'there'}</span>!
+          </h1>
+        </div>
+
+        {/* Division Toggle */}
+        <div className="flex items-center bg-muted/50 rounded-full p-1 border">
+          <button
+            onClick={() => setActiveDivision('insurance')}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
+              activeDivision === 'insurance'
+                ? 'bg-red-600 text-white shadow-lg'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Home className="w-3.5 h-3.5" />
+            <span>Insurance</span>
+          </button>
+          <button
+            onClick={() => setActiveDivision('retail')}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
+              activeDivision === 'retail'
+                ? 'bg-emerald-600 text-white shadow-lg'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            <span>Retail</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Overview */}

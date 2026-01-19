@@ -6,6 +6,7 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
+import { susanRagService } from "./susan-rag.js";
 
 // Module-specific personas and system prompts
 const MODULE_PERSONAS = {
@@ -101,6 +102,7 @@ export interface ChatOptions {
   stream?: boolean;
   includeKnowledgeBase?: boolean;
   userContext?: string;
+  state?: string;
 }
 
 export interface ChatResponse {
@@ -166,12 +168,18 @@ export class SusanAI {
    */
   private buildPrompt(
     userMessage: string,
-    options: ChatOptions
+    options: ChatOptions,
+    ragPrompt?: string
   ): string {
     const context = options.context || "general";
     const persona = MODULE_PERSONAS[context];
 
     let prompt = `${persona.systemPrompt}\n\n`;
+
+    // Add RAG context if available (High Priority)
+    if (ragPrompt) {
+      prompt += `${ragPrompt}\n\n`;
+    }
 
     // Add user-specific context if provided
     if (options.userContext) {
@@ -217,7 +225,16 @@ export class SusanAI {
     const maxTokens = options.maxTokens ?? 2048;
 
     try {
-      const prompt = this.buildPrompt(message, options);
+      // Build RAG context if knowledge base is requested
+      let ragPrompt = "";
+      if (options.includeKnowledgeBase) {
+        // Extract state from options or try to parse from userContext if not provided
+        // For now we assume options.state is passed or we default to none
+        const ragContext = await susanRagService.buildRAGContext(message, options.state);
+        ragPrompt = ragContext.enhancedPrompt;
+      }
+
+      const prompt = this.buildPrompt(message, options, ragPrompt);
 
       const result = await this.genAI!.models.generateContent({
         model: "gemini-2.0-flash-exp",
@@ -269,7 +286,14 @@ export class SusanAI {
       throw new Error(this.getStatus().message);
     }
 
-    const prompt = this.buildPrompt(message, options);
+    // Build RAG context if knowledge base is requested
+    let ragPrompt = "";
+    if (options.includeKnowledgeBase) {
+      const ragContext = await susanRagService.buildRAGContext(message, options.state);
+      ragPrompt = ragContext.enhancedPrompt;
+    }
+
+    const prompt = this.buildPrompt(message, options, ragPrompt);
     const temperature = options.temperature ?? 0.7;
     const maxTokens = options.maxTokens ?? 2048;
 

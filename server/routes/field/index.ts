@@ -16,6 +16,7 @@ const pdfParse = require("pdf-parse");
 import crypto from "crypto";
 import { generateDamageAssessmentPDF, generateInspectionReportPDF } from "../../utils/pdf-generator.js";
 import { getStorageService, isUrl } from "../../services/blob-storage.js";
+import { getUnifiedUserContext } from "../../services/ai-context.js";
 
 // Configure multer for in-memory uploads (for document analysis)
 const memoryStorage = multer.memoryStorage();
@@ -302,13 +303,18 @@ router.post("/chat/:sessionId/message", async (req: Request, res: Response) => {
       content: msg.content
     }));
 
+    // Fetch unified user context (HR, Sales, Training stats)
+    const userContext = userId ? await getUnifiedUserContext(userId) : "";
+
     // Generate AI response using Susan
     let aiResponseContent = "";
     try {
       const response = await susanAI.chat(message, {
         context: "field",
         history: history,
-        includeKnowledgeBase: true
+        includeKnowledgeBase: true,
+        userContext,
+        state: session.state || undefined
       });
       aiResponseContent = response.response;
     } catch (aiError) {

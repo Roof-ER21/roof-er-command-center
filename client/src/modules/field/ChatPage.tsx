@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Send, Bot, User, Loader2, Paperclip, Menu, X, MessageSquare, Sparkles } from "lucide-react";
+import { Send, Bot, User, Loader2, Paperclip, Menu, X, MessageSquare, Sparkles, Globe } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageContent } from "@/components/MessageContent";
+import FieldTranslator from "./components/FieldTranslator";
 
 interface Message {
   id: string;
@@ -34,7 +35,8 @@ export function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [currentSessionId, setCurrentSessionId] = useState<string>(`chat_${Date.now()}`);
+  const [showTranslator, setShowTranslator] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -65,6 +67,28 @@ export function ChatPage() {
     }
   }, [input]);
 
+  const createSession = async () => {
+    try {
+      const response = await fetch("/api/field/chat/session", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ provider: 'gemini' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create chat session');
+      }
+
+      const data = await response.json();
+      return data.data.sessionId;
+    } catch (error) {
+      console.error('Session creation error:', error);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -86,8 +110,19 @@ export function ChatPage() {
     setIsLoading(true);
 
     try {
+      // Ensure we have a session ID
+      let sessionId = currentSessionId;
+      if (!sessionId) {
+        sessionId = await createSession();
+        if (sessionId) {
+          setCurrentSessionId(sessionId);
+        } else {
+          throw new Error("Could not initialize chat session");
+        }
+      }
+
       // Call the API endpoint
-      const response = await fetch(`/api/field/chat/${currentSessionId}/message`, {
+      const response = await fetch(`/api/field/chat/${sessionId}/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -97,7 +132,8 @@ export function ChatPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response from Susan AI');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to get response from Susan AI');
       }
 
       const data = await response.json();
@@ -115,7 +151,7 @@ export function ChatPage() {
       const errorMessage: Message = {
         id: `msg_${Date.now() + 1}`,
         role: 'assistant',
-        content: "Sorry, I encountered an error. Please try again or contact support if the issue persists.",
+        content: "Sorry, I encountered an error connecting to my brain. Please try again or refresh the page.",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -132,7 +168,7 @@ export function ChatPage() {
   };
 
   const handleNewChat = () => {
-    setCurrentSessionId(`chat_${Date.now()}`);
+    setCurrentSessionId(null); // Will be created on first message
     setMessages([]);
     setShowWelcome(true);
     setShowSidebar(false);
@@ -181,15 +217,39 @@ export function ChatPage() {
           </div>
           <p className="text-muted-foreground">AI-powered field assistant for roofing operations</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleNewChat}
-          className="flex items-center gap-2"
-        >
-          <MessageSquare className="h-4 w-4" />
-          New Chat
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowTranslator(true)}
+            className="flex items-center gap-2 text-sky-600 border-sky-200 hover:bg-sky-50"
+          >
+            <Globe className="h-4 w-4" />
+            Translator
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleNewChat}
+            className="flex items-center gap-2"
+          >
+            <MessageSquare className="h-4 w-4" />
+            New Chat
+          </Button>
+        </div>
       </div>
+
+      {/* Field Translator Overlay */}
+      <AnimatePresence>
+        {showTranslator && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed inset-0 z-[100] bg-background"
+          >
+            <FieldTranslator onBack={() => setShowTranslator(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Chat Sidebar */}
       <AnimatePresence>
