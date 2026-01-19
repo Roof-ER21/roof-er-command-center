@@ -37,6 +37,12 @@ import { eq, desc } from "drizzle-orm";
 // Import storage service to initialize and log storage mode
 import { getStorageService } from "./services/blob-storage.js";
 
+// Import workflow scheduler
+import { startWorkflowScheduler } from "./cron/workflow-scheduler.js";
+
+// Import onboarding scheduler
+import { scheduleOverdueTaskCheck } from "./cron/onboarding-overdue-job.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -196,6 +202,12 @@ httpServer.listen(PORT, () => {
   const storageIcon = storageType === 'blob' ? '☁️' : '💾';
   const storageLabel = storageType === 'blob' ? 'Vercel Blob' : 'Local Storage';
 
+  // Start workflow scheduler
+  startWorkflowScheduler();
+
+  // Start onboarding overdue task scheduler
+  scheduleOverdueTaskCheck();
+
   console.log(`
 🚀 Roof ER Command Center Server
 ================================
@@ -209,6 +221,7 @@ Modules Enabled:
   ✅ Training Center
   ✅ Field Assistant
   ✅ WebSocket (Real-time)
+  ✅ Workflow Automation
 
 Storage Configuration:
   ${storageIcon} ${storageLabel}

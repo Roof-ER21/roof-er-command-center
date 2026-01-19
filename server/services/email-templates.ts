@@ -685,6 +685,233 @@ This is an automated message from Roof ER Command Center.
 }
 
 /**
+ * Rejection email template (DEAD_BY_US)
+ */
+export function rejectionByUsTemplate(
+  candidateName: string,
+  position: string
+): { subject: string; html: string; text: string } {
+  const subject = `Application Update - ${position}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Roof ER</h1>
+          <p style="color: #f0f0f0; margin: 10px 0 0 0;">Application Status Update</p>
+        </div>
+
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: #667eea; margin-top: 0;">Thank You for Your Interest</h2>
+
+          <p>Hi ${candidateName},</p>
+
+          <p>Thank you for taking the time to apply for the <strong>${position}</strong> position at Roof ER. We appreciate your interest in joining our team.</p>
+
+          <p>After careful consideration of your application and qualifications, we have decided to move forward with other candidates whose experience more closely aligns with our current needs.</p>
+
+          <div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #667eea; margin: 20px 0;">
+            <p style="margin: 0;">We encourage you to apply for future opportunities at Roof ER that match your skills and experience. We will keep your resume on file for consideration.</p>
+          </div>
+
+          <p>We wish you the best of luck in your job search and future career endeavors.</p>
+
+          <p style="margin-top: 30px;">Best regards,<br><strong>Roof ER Hiring Team</strong></p>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">This is an automated message from Roof ER Command Center.</p>
+          <p style="margin: 10px 0 0 0;">© ${new Date().getFullYear()} Roof ER. All rights reserved.</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = `
+Roof ER - Application Status Update
+
+Hi ${candidateName},
+
+Thank you for taking the time to apply for the ${position} position at Roof ER. We appreciate your interest in joining our team.
+
+After careful consideration of your application and qualifications, we have decided to move forward with other candidates whose experience more closely aligns with our current needs.
+
+We encourage you to apply for future opportunities at Roof ER that match your skills and experience. We will keep your resume on file for consideration.
+
+We wish you the best of luck in your job search and future career endeavors.
+
+Best regards,
+Roof ER Hiring Team
+
+---
+This is an automated message from Roof ER Command Center.
+© ${new Date().getFullYear()} Roof ER. All rights reserved.
+  `.trim();
+
+  return { subject, html, text };
+}
+
+/**
+ * Candidate withdrawal acknowledgment template (DEAD_BY_CANDIDATE)
+ */
+export function withdrawnTemplate(
+  candidateName: string,
+  position: string
+): { subject: string; html: string; text: string } {
+  const subject = `Application Withdrawal Confirmation - ${position}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Roof ER</h1>
+          <p style="color: #f0f0f0; margin: 10px 0 0 0;">Application Withdrawal</p>
+        </div>
+
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: #667eea; margin-top: 0;">Withdrawal Confirmed</h2>
+
+          <p>Hi ${candidateName},</p>
+
+          <p>This email confirms that we have received your request to withdraw your application for the <strong>${position}</strong> position at Roof ER.</p>
+
+          <p>We understand that career decisions involve many factors, and we respect your choice. Your application has been removed from our active candidate pool.</p>
+
+          <div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #667eea; margin: 20px 0;">
+            <p style="margin: 0;">If you would like to be considered for future opportunities at Roof ER, please feel free to apply again or reach out to our HR team.</p>
+          </div>
+
+          <p>We wish you all the best in your career journey.</p>
+
+          <p style="margin-top: 30px;">Best regards,<br><strong>Roof ER Hiring Team</strong></p>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">This is an automated message from Roof ER Command Center.</p>
+          <p style="margin: 10px 0 0 0;">© ${new Date().getFullYear()} Roof ER. All rights reserved.</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = `
+Roof ER - Application Withdrawal
+
+Hi ${candidateName},
+
+This email confirms that we have received your request to withdraw your application for the ${position} position at Roof ER.
+
+We understand that career decisions involve many factors, and we respect your choice. Your application has been removed from our active candidate pool.
+
+If you would like to be considered for future opportunities at Roof ER, please feel free to apply again or reach out to our HR team.
+
+We wish you all the best in your career journey.
+
+Best regards,
+Roof ER Hiring Team
+
+---
+This is an automated message from Roof ER Command Center.
+© ${new Date().getFullYear()} Roof ER. All rights reserved.
+  `.trim();
+
+  return { subject, html, text };
+}
+
+/**
+ * No-show email template (NO_SHOW)
+ */
+export function noShowTemplate(
+  candidateName: string,
+  position: string,
+  interviewDate?: string
+): { subject: string; html: string; text: string } {
+  const subject = `Missed Interview - ${position}`;
+  const dateStr = interviewDate
+    ? new Date(interviewDate).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    : 'your scheduled interview';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Roof ER</h1>
+          <p style="color: #f0f0f0; margin: 10px 0 0 0;">Missed Interview</p>
+        </div>
+
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: #f59e0b; margin-top: 0;">We Missed You Today</h2>
+
+          <p>Hi ${candidateName},</p>
+
+          <p>We noticed that you were unable to attend your scheduled interview for the <strong>${position}</strong> position at Roof ER on ${dateStr}.</p>
+
+          <p>We understand that unexpected situations can arise. If you are still interested in this opportunity and would like to reschedule, please contact us as soon as possible.</p>
+
+          <div style="background: #fef3c7; padding: 15px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+            <p style="margin: 0;"><strong>To reschedule:</strong><br>
+            Please reply to this email or contact our HR team within the next 48 hours to schedule a new interview time.</p>
+          </div>
+
+          <p>If we do not hear from you within 48 hours, we will assume you are no longer interested in the position and will close your application.</p>
+
+          <p style="margin-top: 30px;">Best regards,<br><strong>Roof ER Hiring Team</strong></p>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">This is an automated message from Roof ER Command Center.</p>
+          <p style="margin: 10px 0 0 0;">© ${new Date().getFullYear()} Roof ER. All rights reserved.</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = `
+Roof ER - Missed Interview
+
+Hi ${candidateName},
+
+We noticed that you were unable to attend your scheduled interview for the ${position} position at Roof ER on ${dateStr}.
+
+We understand that unexpected situations can arise. If you are still interested in this opportunity and would like to reschedule, please contact us as soon as possible.
+
+TO RESCHEDULE:
+Please reply to this email or contact our HR team within the next 48 hours to schedule a new interview time.
+
+If we do not hear from you within 48 hours, we will assume you are no longer interested in the position and will close your application.
+
+Best regards,
+Roof ER Hiring Team
+
+---
+This is an automated message from Roof ER Command Center.
+© ${new Date().getFullYear()} Roof ER. All rights reserved.
+  `.trim();
+
+  return { subject, html, text };
+}
+
+/**
  * Offer letter email template
  */
 export function offerLetterTemplate(

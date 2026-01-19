@@ -12,7 +12,14 @@ import {
   ptoApprovedTemplate,
   ptoDeniedTemplate,
   ptoReminderTemplate,
+  rejectionByUsTemplate,
+  withdrawnTemplate,
+  noShowTemplate,
 } from './email-templates.js';
+import {
+  onboardingTaskOverdueTemplate,
+  onboardingAssignedTemplate,
+} from './onboarding-email-templates.js';
 
 /**
  * Email Service using Resend API
@@ -55,7 +62,7 @@ async function sendEmail(
   subject: string,
   html: string,
   text: string,
-  emailType: 'candidate_status' | 'interview_scheduled' | 'interview_reminder' | 'offer_sent' | 'welcome' | 'onboarding_reminder' | 'pto_submitted' | 'pto_approved' | 'pto_denied' | 'pto_reminder',
+  emailType: 'candidate_status' | 'interview_scheduled' | 'interview_reminder' | 'offer_sent' | 'welcome' | 'onboarding_reminder' | 'pto_submitted' | 'pto_approved' | 'pto_denied' | 'pto_reminder' | 'rejection' | 'withdrawal' | 'no_show',
   metadata: EmailMetadata
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
@@ -551,6 +558,123 @@ export async function sendPTOReminder(
   );
 }
 
+/**
+ * Send rejection email (DEAD_BY_US)
+ */
+export async function sendRejectionEmail(
+  candidate: { id: number; firstName: string; lastName: string; email: string; position: string }
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html, text } = rejectionByUsTemplate(candidate.firstName, candidate.position);
+
+  return sendEmail(
+    candidate.email,
+    `${candidate.firstName} ${candidate.lastName}`,
+    subject,
+    html,
+    text,
+    'rejection',
+    {
+      candidateId: candidate.id,
+      reason: 'rejected_by_us',
+    }
+  );
+}
+
+/**
+ * Send withdrawal confirmation email (DEAD_BY_CANDIDATE)
+ */
+export async function sendWithdrawalEmail(
+  candidate: { id: number; firstName: string; lastName: string; email: string; position: string }
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html, text } = withdrawnTemplate(candidate.firstName, candidate.position);
+
+  return sendEmail(
+    candidate.email,
+    `${candidate.firstName} ${candidate.lastName}`,
+    subject,
+    html,
+    text,
+    'withdrawal',
+    {
+      candidateId: candidate.id,
+      reason: 'withdrawn_by_candidate',
+    }
+  );
+}
+
+/**
+ * Send no-show email (NO_SHOW)
+ */
+export async function sendNoShowEmail(
+  candidate: { id: number; firstName: string; lastName: string; email: string; position: string },
+  interviewDate?: string
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html, text } = noShowTemplate(candidate.firstName, candidate.position, interviewDate);
+
+  return sendEmail(
+    candidate.email,
+    `${candidate.firstName} ${candidate.lastName}`,
+    subject,
+    html,
+    text,
+    'no_show',
+    {
+      candidateId: candidate.id,
+      interviewDate,
+      reason: 'no_show',
+    }
+  );
+}
+
+/**
+ * Send onboarding task overdue email
+ */
+export async function sendOnboardingTaskOverdueEmail(
+  employee: { firstName: string; lastName: string; email: string },
+  task: { taskName: string; dueDate: string; description?: string | null },
+  daysOverdue: number
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html, text } = onboardingTaskOverdueTemplate(employee, task, daysOverdue);
+
+  return sendEmail(
+    employee.email,
+    `${employee.firstName} ${employee.lastName}`,
+    subject,
+    html,
+    text,
+    'onboarding_reminder',
+    {
+      taskName: task.taskName,
+      daysOverdue,
+    }
+  );
+}
+
+/**
+ * Send onboarding assigned email
+ */
+export async function sendOnboardingAssignedEmail(
+  employee: { firstName: string; lastName: string; email: string },
+  template: { name: string; description?: string | null },
+  manager: { firstName: string; lastName: string },
+  tasksCount: number
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html, text } = onboardingAssignedTemplate(employee, template, manager, tasksCount);
+
+  return sendEmail(
+    employee.email,
+    `${employee.firstName} ${employee.lastName}`,
+    subject,
+    html,
+    text,
+    'onboarding_reminder',
+    {
+      templateName: template.name,
+      tasksCount,
+    }
+  );
+}
+
 export default {
   sendCandidateStatusEmail,
   sendInterviewScheduledEmail,
@@ -562,4 +686,9 @@ export default {
   sendPTOApprovalEmail,
   sendPTODenialEmail,
   sendPTOReminder,
+  sendRejectionEmail,
+  sendWithdrawalEmail,
+  sendNoShowEmail,
+  sendOnboardingTaskOverdueEmail,
+  sendOnboardingAssignedEmail,
 };

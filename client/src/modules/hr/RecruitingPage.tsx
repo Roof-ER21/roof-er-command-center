@@ -10,13 +10,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarClock, Pencil, Search, UserPlus, Eye, Sparkles } from "lucide-react";
+import { CalendarClock, Pencil, Search, UserPlus, Eye, Sparkles, Mail } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { RecruitingAnalyticsPage } from "@/modules/hr/pages/RecruitingAnalyticsPage";
 import { ResumeUploaderPage } from "@/modules/hr/pages/ResumeUploaderPage";
 import { AICriteriaConfigPage } from "@/modules/hr/pages/AICriteriaConfigPage";
 import { CandidateDetailsDialog } from "./components/CandidateDetailsDialog";
+import { InterviewCalendar } from "./components/InterviewCalendar";
 import type { Candidate } from "@shared/schema";
 
 interface EmployeeOption {
@@ -61,12 +62,17 @@ export function RecruitingPage() {
   const [isInterviewDialogOpen, setIsInterviewDialogOpen] = useState(false);
   const [editingInterview, setEditingInterview] = useState<Interview | null>(null);
   const [selectedCandidateForDetails, setSelectedCandidateForDetails] = useState<Candidate | null>(null);
+  const [isBulkEmailDialogOpen, setIsBulkEmailDialogOpen] = useState(false);
+  const [bulkEmailSubject, setBulkEmailSubject] = useState("");
+  const [bulkEmailBody, setBulkEmailBody] = useState("");
+  const [interviewView, setInterviewView] = useState<"list" | "calendar">("list");
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
     position: "",
+    jobPostingId: "",
     status: "new",
     source: "",
     resumeUrl: "",
@@ -167,6 +173,15 @@ export function RecruitingPage() {
     },
   });
 
+  const { data: jobPostings = [] } = useQuery<Array<{id: number, title: string, status: string}>>({
+    queryKey: ["/api/hr/job-postings", "active"],
+    queryFn: async () => {
+      const response = await fetch("/api/hr/job-postings?status=active", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch job postings");
+      return response.json();
+    },
+  });
+
   const { data: interviews = [] } = useQuery<Interview[]>({
     queryKey: ["/api/hr/interviews"],
     queryFn: async () => {
@@ -229,6 +244,43 @@ export function RecruitingPage() {
       toast({
         title: "Error",
         description: error?.message || "Failed to update candidates",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkEmailMutation = useMutation({
+    mutationFn: async (payload: {
+      candidateIds: number[];
+      subject: string;
+      customBody: string;
+    }) => {
+      const response = await fetch("/api/hr/candidates/bulk-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error?.error || "Failed to send bulk emails");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setIsBulkEmailDialogOpen(false);
+      setBulkEmailSubject("");
+      setBulkEmailBody("");
+      setSelectedCandidateIds(new Set());
+      toast({
+        title: "Bulk email sent",
+        description: `Sent to ${data.sent} candidates (${data.failed} failed)`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to send bulk emails",
         variant: "destructive",
       });
     },
@@ -465,6 +517,7 @@ export function RecruitingPage() {
       email: "",
       phone: "",
       position: "",
+      jobPostingId: "",
       status: "new",
       source: "",
       resumeUrl: "",
@@ -609,6 +662,7 @@ export function RecruitingPage() {
       email: candidate.email,
       phone: candidate.phone || "",
       position: candidate.position,
+      jobPostingId: candidate.jobPostingId ? candidate.jobPostingId.toString() : "",
       status: candidate.status,
       source: candidate.source || "",
       resumeUrl: candidate.resumeUrl || "",
@@ -757,6 +811,30 @@ export function RecruitingPage() {
                       value={formData.position}
                       onChange={(e) => setFormData((prev) => ({ ...prev, position: e.target.value }))}
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor="jobPosting">Job Posting (Optional)</Label>
+                    <Select
+                      value={formData.jobPostingId || "none"}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          jobPostingId: value === "none" ? "" : value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select job posting" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No job posting</SelectItem>
+                        {jobPostings.map((posting) => (
+                          <SelectItem key={posting.id} value={posting.id.toString()}>
+                            {posting.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="status">Status</Label>
@@ -1023,6 +1101,15 @@ export function RecruitingPage() {
                       onClick={() => setIsCompareOpen(true)}
                     >
                       Compare
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={selectedCandidateIds.size === 0}
+                      onClick={() => setIsBulkEmailDialogOpen(true)}
+                    >
+                      <Mail className="mr-1 h-3 w-3" />
+                      Email
                     </Button>
                     <Button
                       size="sm"
@@ -1395,29 +1482,47 @@ export function RecruitingPage() {
         <TabsContent value="interviews">
           <div className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search interviews..."
-                    className="pl-9"
-                    value={interviewSearch}
-                    onChange={(e) => setInterviewSearch(e.target.value)}
-                  />
-                </div>
-                <Select value={interviewStatusFilter} onValueChange={setInterviewStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All statuses</SelectItem>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="no_show">No Show</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={interviewView === "list" ? "default" : "outline"}
+                  onClick={() => setInterviewView("list")}
+                >
+                  List
+                </Button>
+                <Button
+                  size="sm"
+                  variant={interviewView === "calendar" ? "default" : "outline"}
+                  onClick={() => setInterviewView("calendar")}
+                >
+                  Calendar
+                </Button>
               </div>
+              {interviewView === "list" && (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search interviews..."
+                      className="pl-9"
+                      value={interviewSearch}
+                      onChange={(e) => setInterviewSearch(e.target.value)}
+                    />
+                  </div>
+                  <Select value={interviewStatusFilter} onValueChange={setInterviewStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All statuses</SelectItem>
+                      <SelectItem value="scheduled">Scheduled</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="no_show">No Show</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <Dialog open={isInterviewDialogOpen} onOpenChange={handleInterviewDialogChange}>
                 <DialogTrigger asChild>
                   <Button onClick={() => resetInterviewForm()}>
@@ -1568,13 +1673,19 @@ export function RecruitingPage() {
               </Dialog>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Interview Schedule</CardTitle>
-                <CardDescription>{filteredInterviews.length} interviews</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {filteredInterviews.map((interview) => (
+            {interviewView === "calendar" ? (
+              <InterviewCalendar
+                interviews={interviews}
+                onInterviewClick={(interview) => handleInterviewEdit(interview)}
+              />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Interview Schedule</CardTitle>
+                  <CardDescription>{filteredInterviews.length} interviews</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {filteredInterviews.map((interview) => (
                   <div
                     key={interview.id}
                     className="flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between"
@@ -1628,13 +1739,14 @@ export function RecruitingPage() {
                     </div>
                   </div>
                 ))}
-                {filteredInterviews.length === 0 && (
-                  <div className="py-8 text-center text-sm text-muted-foreground">
-                    No interviews scheduled.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  {filteredInterviews.length === 0 && (
+                    <div className="py-8 text-center text-sm text-muted-foreground">
+                      No interviews scheduled.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
@@ -1655,6 +1767,66 @@ export function RecruitingPage() {
         onOpenChange={(open) => !open && setSelectedCandidateForDetails(null)}
         employeeLookup={employeeLookup}
       />
+
+      <Dialog open={isBulkEmailDialogOpen} onOpenChange={setIsBulkEmailDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Send Bulk Email to {selectedCandidateIds.size} Candidates</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="bulk-email-subject">Subject</Label>
+              <Input
+                id="bulk-email-subject"
+                value={bulkEmailSubject}
+                onChange={(e) => setBulkEmailSubject(e.target.value)}
+                placeholder="Email subject"
+              />
+            </div>
+            <div>
+              <Label htmlFor="bulk-email-body">Message</Label>
+              <Textarea
+                id="bulk-email-body"
+                value={bulkEmailBody}
+                onChange={(e) => setBulkEmailBody(e.target.value)}
+                placeholder="Email body (use {firstName}, {lastName}, {position} for personalization)"
+                rows={10}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Available variables: {"{firstName}"}, {"{lastName}"}, {"{position}"}
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsBulkEmailDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!bulkEmailSubject || !bulkEmailBody) {
+                    toast({
+                      title: "Missing fields",
+                      description: "Please provide subject and message",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  bulkEmailMutation.mutate({
+                    candidateIds: Array.from(selectedCandidateIds),
+                    subject: bulkEmailSubject,
+                    customBody: bulkEmailBody,
+                  });
+                }}
+                disabled={bulkEmailMutation.isPending}
+              >
+                {bulkEmailMutation.isPending ? "Sending..." : "Send Emails"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

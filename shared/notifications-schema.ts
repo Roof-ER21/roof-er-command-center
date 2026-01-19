@@ -16,6 +16,8 @@ export const notifications = pgTable('notifications', {
     | 'streak_reminder'
     | 'training_complete'
     | 'team_update'
+    | 'task_overdue'
+    | 'onboarding_assigned'
   >().notNull(),
   title: text('title').notNull(),
   message: text('message').notNull(),

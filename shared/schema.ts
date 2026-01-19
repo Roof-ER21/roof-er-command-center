@@ -146,6 +146,26 @@ export const ptoRequests = pgTable('pto_requests', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const jobPostings = pgTable('job_postings', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  department: text('department').notNull(),
+  location: text('location').default('Vienna, VA'),
+  employmentType: text('employment_type').default('full_time'), // full_time, part_time, contract
+  description: text('description'),
+  requirements: text('requirements'), // JSON array of requirements
+  responsibilities: text('responsibilities'), // JSON array
+  salaryMin: real('salary_min'),
+  salaryMax: real('salary_max'),
+  salaryType: text('salary_type').default('yearly'), // yearly, hourly, commission
+  status: text('status').default('draft'), // draft, active, paused, closed
+  publishedAt: timestamp('published_at'),
+  closedAt: timestamp('closed_at'),
+  createdBy: integer('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const candidates = pgTable('candidates', {
   id: serial('id').primaryKey(),
   firstName: text('first_name').notNull(),
@@ -153,6 +173,7 @@ export const candidates = pgTable('candidates', {
   email: text('email').notNull(),
   phone: text('phone'),
   position: text('position').notNull(),
+  jobPostingId: integer('job_posting_id').references(() => jobPostings.id),
   status: text('status').$type<'new' | 'screening' | 'interview' | 'offer' | 'hired' | 'rejected'>().notNull().default('new'),
   resumeUrl: text('resume_url'),
   source: text('source'),
@@ -275,6 +296,20 @@ export const interviews = pgTable('interviews', {
   notes: text('notes'),
   feedback: text('feedback'),
   recommendation: text('recommendation').$type<'hire' | 'reject' | 'second_interview' | 'hold'>(),
+  scorecardId: integer('scorecard_id').references(() => interviewScorecards.id),
+  scorecardScores: jsonb('scorecard_scores'), // {criterionId: score}
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const interviewScorecards = pgTable('interview_scorecards', {
+  id: serial('id').primaryKey(),
+  jobPostingId: integer('job_posting_id'), // Optional: link to specific job posting
+  name: text('name').notNull(),
+  description: text('description'),
+  criteria: jsonb('criteria').$type<Array<{id: string, name: string, description: string, weight: number}>>().notNull().default([]),
+  isActive: boolean('is_active').notNull().default(true),
+  createdBy: integer('created_by').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -545,6 +580,8 @@ export const workflows = pgTable('workflows', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   description: text('description'),
+  trigger: text('trigger').$type<'MANUAL' | 'CANDIDATE_CREATED' | 'CANDIDATE_STAGE_CHANGE' | 'INTERVIEW_COMPLETED' | 'SCHEDULED'>().notNull().default('MANUAL'),
+  triggerConditions: jsonb('trigger_conditions').$type<Record<string, any>>(), // e.g., { fromStage: 'screening', toStage: 'interview' }
   isActive: boolean('is_active').notNull().default(true),
   createdBy: integer('created_by').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -555,9 +592,38 @@ export const workflowSteps = pgTable('workflow_steps', {
   id: serial('id').primaryKey(),
   workflowId: integer('workflow_id').notNull().references(() => workflows.id),
   stepOrder: integer('step_order').notNull(),
+  stepType: text('step_type').$type<'ACTION' | 'CONDITION' | 'DELAY' | 'NOTIFICATION'>().notNull().default('ACTION'),
+  actionType: text('action_type').$type<'SEND_EMAIL' | 'UPDATE_STATUS' | 'ASSIGN_TO' | 'CREATE_TASK' | 'ADD_NOTE'>(), // for ACTION steps
   title: text('title').notNull(),
   description: text('description'),
   assignedRole: text('assigned_role'),
+  config: jsonb('config').$type<Record<string, any>>(), // step configuration (email template, condition expression, delay duration, etc.)
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const workflowExecutions = pgTable('workflow_executions', {
+  id: serial('id').primaryKey(),
+  workflowId: integer('workflow_id').notNull().references(() => workflows.id),
+  candidateId: integer('candidate_id').references(() => candidates.id),
+  status: text('status').$type<'RUNNING' | 'COMPLETED' | 'FAILED' | 'PAUSED'>().notNull().default('RUNNING'),
+  currentStepId: integer('current_step_id').references(() => workflowSteps.id),
+  context: jsonb('context').$type<Record<string, any>>(), // execution context data
+  error: text('error'),
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const workflowStepExecutions = pgTable('workflow_step_executions', {
+  id: serial('id').primaryKey(),
+  executionId: integer('execution_id').notNull().references(() => workflowExecutions.id),
+  stepId: integer('step_id').notNull().references(() => workflowSteps.id),
+  status: text('status').$type<'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SKIPPED'>().notNull().default('PENDING'),
+  result: jsonb('result').$type<Record<string, any>>(), // step execution result
+  error: text('error'),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  scheduledFor: timestamp('scheduled_for'), // for DELAY steps
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -1142,12 +1208,36 @@ export const interviewsRelations = relations(interviews, ({ one }) => ({
     fields: [interviews.interviewerId],
     references: [users.id],
   }),
+  scorecard: one(interviewScorecards, {
+    fields: [interviews.scorecardId],
+    references: [interviewScorecards.id],
+  }),
+}));
+
+export const interviewScorecardsRelations = relations(interviewScorecards, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [interviewScorecards.createdBy],
+    references: [users.id],
+  }),
+  interviews: many(interviews),
+}));
+
+export const jobPostingsRelations = relations(jobPostings, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [jobPostings.createdBy],
+    references: [users.id],
+  }),
+  candidates: many(candidates),
 }));
 
 export const candidatesRelations = relations(candidates, ({ one, many }) => ({
   assignedToUser: one(users, {
     fields: [candidates.assignedTo],
     references: [users.id],
+  }),
+  jobPosting: one(jobPostings, {
+    fields: [candidates.jobPostingId],
+    references: [jobPostings.id],
   }),
   interviews: many(interviews),
   contracts: many(contracts),
@@ -1224,6 +1314,12 @@ export const insertDepartmentPtoSettingSchema = createInsertSchema(departmentPto
   updatedAt: true,
 });
 
+export const insertJobPostingSchema = createInsertSchema(jobPostings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertCandidateSchema = createInsertSchema(candidates).omit({
   id: true,
   createdAt: true,
@@ -1274,6 +1370,8 @@ export type PtoRequest = typeof ptoRequests.$inferSelect;
 export type CompanyPtoPolicy = typeof companyPtoPolicy.$inferSelect;
 export type PtoPolicy = typeof ptoPolicies.$inferSelect;
 export type DepartmentPtoSetting = typeof departmentPtoSettings.$inferSelect;
+export type JobPosting = typeof jobPostings.$inferSelect;
+export type NewJobPosting = typeof jobPostings.$inferInsert;
 export type Candidate = typeof candidates.$inferSelect;
 export type CandidateNote = typeof candidateNotes.$inferSelect;
 export type EmployeeNote = typeof employeeNotes.$inferSelect;
@@ -1284,6 +1382,8 @@ export type OnboardingTask = typeof onboardingTasks.$inferSelect;
 export type OnboardingRequirement = typeof onboardingRequirements.$inferSelect;
 export type NewOnboardingRequirement = typeof onboardingRequirements.$inferInsert;
 export type Interview = typeof interviews.$inferSelect;
+export type InterviewScorecard = typeof interviewScorecards.$inferSelect;
+export type NewInterviewScorecard = typeof interviewScorecards.$inferInsert;
 export type Document = typeof documents.$inferSelect;
 export type DocumentAcknowledgement = typeof documentAcknowledgements.$inferSelect;
 export type DocumentAssignment = typeof documentAssignments.$inferSelect;
@@ -1302,6 +1402,8 @@ export type CoiDocument = typeof coiDocuments.$inferSelect;
 export type EmployeeAssignment = typeof employeeAssignments.$inferSelect;
 export type Workflow = typeof workflows.$inferSelect;
 export type WorkflowStep = typeof workflowSteps.$inferSelect;
+export type WorkflowExecution = typeof workflowExecutions.$inferSelect;
+export type WorkflowStepExecution = typeof workflowStepExecutions.$inferSelect;
 export type ContractToken = typeof contractTokens.$inferSelect;
 export type EquipmentSignatureToken = typeof equipmentSignatureTokens.$inferSelect;
 export type SalesRep = typeof salesReps.$inferSelect;

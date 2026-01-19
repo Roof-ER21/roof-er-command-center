@@ -7,11 +7,13 @@ import {
   territories,
   ptoRequests,
   companyPtoPolicy,
+  jobPostings,
   candidates,
   candidateNotes,
   employeeNotes,
   hrAssignments,
   interviews,
+  interviewScorecards,
   equipment,
   contracts,
   onboardingTasks,
@@ -35,6 +37,8 @@ import {
   employeeAssignments,
   workflows,
   workflowSteps,
+  workflowExecutions,
+  workflowStepExecutions,
   contractTokens,
   equipmentSignatureTokens,
 } from "../../../shared/schema.js";
@@ -42,8 +46,10 @@ import { randomBytes } from "crypto";
 import { CronExpressionParser } from "cron-parser";
 import { eq, desc, inArray, sql, and, gte, lte } from "drizzle-orm";
 import recruitingAnalyticsRoutes from "./recruiting-analytics";
+import jobPostingsRoutes from "./job-postings";
 import ptoPoliciesRoutes from "./pto-policies";
 import ptoAnalyticsRoutes from "./pto-analytics";
+import offerLettersRoutes from "./offer-letters.js";
 import {
   sendCandidateStatusEmail,
   sendInterviewScheduledEmail,
@@ -51,6 +57,9 @@ import {
   sendPTORequestNotification,
   sendPTOApprovalEmail,
   sendPTODenialEmail,
+  sendRejectionEmail,
+  sendWithdrawalEmail,
+  sendNoShowEmail,
 } from "../../services/email.js";
 import {
   createOnboardingRequirements,
@@ -58,6 +67,9 @@ import {
   calculateCompletionPercentage,
   isRequirementOverdue,
 } from "../../services/onboarding-requirements.js";
+import { workflowExecutor } from "../../services/workflow-executor.js";
+import { executeStatusAutomation } from "../../services/candidate-status-automation.js";
+import hireRouter from "./hire-endpoint.js";
 
 const router = Router();
 const adminRoles = new Set([
@@ -764,7 +776,7 @@ router.get("/candidates", async (req: Request, res: Response) => {
 // Create candidate
 router.post("/candidates", async (req: Request, res: Response) => {
   try {
-    const { firstName, lastName, email, phone, position, status, source, resumeUrl, rating, notes, assignedTo } = req.body;
+    const { firstName, lastName, email, phone, position, jobPostingId, status, source, resumeUrl, rating, notes, assignedTo } = req.body;
 
     if (!firstName || !lastName || !email || !position) {
       return res.status(400).json({ error: "Missing required candidate fields" });
@@ -776,6 +788,7 @@ router.post("/candidates", async (req: Request, res: Response) => {
       email,
       phone,
       position,
+      jobPostingId: jobPostingId ? parseInt(jobPostingId, 10) : null,
       status: status || "new",
       source,
       resumeUrl,
@@ -784,6 +797,11 @@ router.post("/candidates", async (req: Request, res: Response) => {
       assignedTo: assignedTo ? parseInt(assignedTo, 10) : null,
       isArchived: false,
     }).returning();
+
+    // Trigger CANDIDATE_CREATED workflows
+    workflowExecutor.onCandidateCreated(newCandidate.id, (req as any).session?.userId).catch(err => {
+      console.error('[Workflow] Failed to trigger candidate created workflows:', err);
+    });
 
     res.status(201).json(newCandidate);
   } catch (error) {
@@ -860,12 +878,14 @@ router.patch("/candidates/:id", async (req: Request, res: Response) => {
       email,
       phone,
       position,
+      jobPostingId,
       status,
       source,
       resumeUrl,
       rating,
       notes,
       assignedTo,
+      referralName,
       isArchived,
     } = req.body;
 
@@ -875,6 +895,9 @@ router.patch("/candidates/:id", async (req: Request, res: Response) => {
     if (email !== undefined) update.email = email;
     if (phone !== undefined) update.phone = phone;
     if (position !== undefined) update.position = position;
+    if (jobPostingId !== undefined) {
+      update.jobPostingId = jobPostingId ? parseInt(jobPostingId, 10) : null;
+    }
     if (status !== undefined) update.status = status;
     if (source !== undefined) update.source = source;
     if (resumeUrl !== undefined) update.resumeUrl = resumeUrl;
@@ -883,6 +906,7 @@ router.patch("/candidates/:id", async (req: Request, res: Response) => {
     if (assignedTo !== undefined) {
       update.assignedTo = assignedTo ? parseInt(assignedTo, 10) : null;
     }
+    if (referralName !== undefined) update.referralName = referralName;
     if (isArchived !== undefined) {
       const archiveValue = Boolean(isArchived);
       update.isArchived = archiveValue;
@@ -903,6 +927,33 @@ router.patch("/candidates/:id", async (req: Request, res: Response) => {
       sendCandidateStatusEmail(updated, status, currentCandidate.status).catch(err => {
         console.error('Failed to send candidate status email:', err);
       });
+
+      // Trigger CANDIDATE_STAGE_CHANGE workflows
+      workflowExecutor.onCandidateStageChange(
+        candidateId,
+        currentCandidate.status,
+        status,
+        (req as any).session?.userId
+      ).catch(err => {
+        console.error('[Workflow] Failed to trigger candidate stage change workflows:', err);
+      });
+
+      // Execute DEAD/NO_SHOW automation for terminal statuses
+      const deadStatuses = ['DEAD_BY_CANDIDATE', 'DEAD_BY_COMPANY', 'DEAD_COMPENSATION', 'DEAD_LOCATION', 'DEAD_TIMING', 'DEAD_QUALIFICATIONS', 'DEAD_CULTURE_FIT', 'DEAD_OTHER', 'rejected', 'NO_SHOW', 'no_show'];
+
+      if (deadStatuses.includes(status)) {
+        console.log(`🔄 Executing ${status} automation for candidate ${updated.id}`);
+        executeStatusAutomation({
+          candidateId: updated.id,
+          newStatus: status,
+          oldStatus: currentCandidate.status,
+          reason: req.body.deadReason,
+          interviewId: req.body.interviewId,
+          googleEventId: req.body.googleEventId,
+        }).catch(err => {
+          console.error('Failed to execute status automation:', err);
+        });
+      }
     }
 
     // Send offer email if status changed to "offer"
@@ -1296,6 +1347,99 @@ router.post("/candidates/bulk-score", async (req: Request, res: Response) => {
   }
 });
 
+// Bulk Email Campaign
+router.post("/candidates/bulk-email", async (req: Request, res: Response) => {
+  try {
+    const { candidateIds, templateId, subject, customBody } = req.body;
+
+    if (!Array.isArray(candidateIds) || candidateIds.length === 0) {
+      return res.status(400).json({ error: "Invalid candidate IDs. Must be a non-empty array." });
+    }
+
+    // Get candidates
+    const candidatesData = await db
+      .select()
+      .from(candidates)
+      .where(inArray(candidates.id, candidateIds.map(id => parseInt(id))));
+
+    if (candidatesData.length === 0) {
+      return res.status(404).json({ error: "No candidates found" });
+    }
+
+    // Get email template if provided
+    let emailSubject = subject || "Update from Roof ER";
+    let emailBody = customBody || "";
+
+    if (templateId) {
+      const [template] = await db
+        .select()
+        .from(emailTemplates)
+        .where(eq(emailTemplates.id, parseInt(templateId)));
+
+      if (template) {
+        emailSubject = subject || template.subject;
+        emailBody = customBody || template.body;
+      }
+    }
+
+    let successCount = 0;
+    let failureCount = 0;
+    const results = [];
+
+    // Send email to each candidate
+    for (const candidate of candidatesData) {
+      try {
+        // Personalize email
+        const personalizedSubject = emailSubject
+          .replace(/\{firstName\}/g, candidate.firstName)
+          .replace(/\{lastName\}/g, candidate.lastName)
+          .replace(/\{position\}/g, candidate.position);
+
+        const personalizedBody = emailBody
+          .replace(/\{firstName\}/g, candidate.firstName)
+          .replace(/\{lastName\}/g, candidate.lastName)
+          .replace(/\{position\}/g, candidate.position);
+
+        // Send using candidate status email function (repurposed for bulk)
+        await sendCandidateStatusEmail(
+          candidate,
+          candidate.status,
+          candidate.status
+        );
+
+        successCount++;
+        results.push({
+          candidateId: candidate.id,
+          email: candidate.email,
+          status: 'sent'
+        });
+      } catch (error) {
+        console.error(`Failed to send email to ${candidate.email}:`, error);
+        failureCount++;
+        results.push({
+          candidateId: candidate.id,
+          email: candidate.email,
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      sent: successCount,
+      failed: failureCount,
+      total: candidatesData.length,
+      results
+    });
+  } catch (error) {
+    console.error("Bulk email error:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Failed to send bulk emails",
+    });
+  }
+});
+
 // Interviews
 router.get("/interviews", async (req: Request, res: Response) => {
   try {
@@ -1464,6 +1608,15 @@ router.patch("/interviews/:id", async (req: Request, res: Response) => {
     if (feedback !== undefined) update.feedback = feedback;
     if (recommendation !== undefined) update.recommendation = recommendation;
 
+    // Get current interview to check for status changes
+    const [currentInterview] = await db.select().from(interviews)
+      .where(eq(interviews.id, interviewId))
+      .limit(1);
+
+    if (!currentInterview) {
+      return res.status(404).json({ error: "Interview not found" });
+    }
+
     const [updated] = await db.update(interviews)
       .set(update)
       .where(eq(interviews.id, interviewId))
@@ -1471,6 +1624,39 @@ router.patch("/interviews/:id", async (req: Request, res: Response) => {
 
     if (!updated) {
       return res.status(404).json({ error: "Interview not found" });
+    }
+
+    // Trigger INTERVIEW_COMPLETED workflows if status changed to "completed"
+    if (status === 'completed' && currentInterview.status !== 'completed') {
+      workflowExecutor.onInterviewCompleted(
+        interviewId,
+        updated.candidateId,
+        (req as any).session?.userId
+      ).catch(err => {
+        console.error('[Workflow] Failed to trigger interview completed workflows:', err);
+      });
+    }
+
+    // Send no-show email if status changed to "no_show"
+    if (status === 'no_show' && currentInterview.status !== 'no_show') {
+      const [candidate] = await db.select().from(candidates)
+        .where(eq(candidates.id, updated.candidateId))
+        .limit(1);
+
+      if (candidate) {
+        sendNoShowEmail(
+          {
+            id: candidate.id,
+            firstName: candidate.firstName,
+            lastName: candidate.lastName,
+            email: candidate.email,
+            position: candidate.position,
+          },
+          updated.scheduledAt.toISOString()
+        ).catch(err => {
+          console.error('Failed to send no-show email:', err);
+        });
+      }
     }
 
     res.json(updated);
@@ -1499,6 +1685,129 @@ router.delete("/interviews/:id", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Delete interview error:", error);
     res.status(500).json({ error: "HR interviews error (500)" });
+  }
+});
+
+// Interview Scorecards
+router.get("/scorecards", async (req: Request, res: Response) => {
+  try {
+    const scorecards = await db
+      .select()
+      .from(interviewScorecards)
+      .where(eq(interviewScorecards.isActive, true))
+      .orderBy(desc(interviewScorecards.createdAt));
+
+    res.json(scorecards);
+  } catch (error) {
+    console.error("Fetch scorecards error:", error);
+    res.status(500).json({ error: "Failed to fetch scorecards" });
+  }
+});
+
+router.post("/scorecards", async (req: Request, res: Response) => {
+  try {
+    const { name, description, criteria, jobPostingId } = req.body;
+
+    if (!name || !criteria || !Array.isArray(criteria)) {
+      return res.status(400).json({ error: "Name and criteria are required" });
+    }
+
+    const [scorecard] = await db
+      .insert(interviewScorecards)
+      .values({
+        name,
+        description: description || null,
+        criteria,
+        jobPostingId: jobPostingId ? parseInt(jobPostingId) : null,
+        createdBy: req.user?.id || null,
+      })
+      .returning();
+
+    res.status(201).json(scorecard);
+  } catch (error) {
+    console.error("Create scorecard error:", error);
+    res.status(500).json({ error: "Failed to create scorecard" });
+  }
+});
+
+router.get("/scorecards/:id", async (req: Request, res: Response) => {
+  try {
+    const scorecardId = parseInt(req.params.id, 10);
+    if (Number.isNaN(scorecardId)) {
+      return res.status(400).json({ error: "Invalid scorecard id" });
+    }
+
+    const [scorecard] = await db
+      .select()
+      .from(interviewScorecards)
+      .where(eq(interviewScorecards.id, scorecardId));
+
+    if (!scorecard) {
+      return res.status(404).json({ error: "Scorecard not found" });
+    }
+
+    res.json(scorecard);
+  } catch (error) {
+    console.error("Fetch scorecard error:", error);
+    res.status(500).json({ error: "Failed to fetch scorecard" });
+  }
+});
+
+router.patch("/scorecards/:id", async (req: Request, res: Response) => {
+  try {
+    const scorecardId = parseInt(req.params.id, 10);
+    if (Number.isNaN(scorecardId)) {
+      return res.status(400).json({ error: "Invalid scorecard id" });
+    }
+
+    const { name, description, criteria, isActive, jobPostingId } = req.body;
+
+    const update: Record<string, any> = { updatedAt: new Date() };
+    if (name !== undefined) update.name = name;
+    if (description !== undefined) update.description = description;
+    if (criteria !== undefined) update.criteria = criteria;
+    if (isActive !== undefined) update.isActive = isActive;
+    if (jobPostingId !== undefined) update.jobPostingId = jobPostingId ? parseInt(jobPostingId) : null;
+
+    const [updated] = await db
+      .update(interviewScorecards)
+      .set(update)
+      .where(eq(interviewScorecards.id, scorecardId))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Scorecard not found" });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Update scorecard error:", error);
+    res.status(500).json({ error: "Failed to update scorecard" });
+  }
+});
+
+router.delete("/scorecards/:id", async (req: Request, res: Response) => {
+  try {
+    const scorecardId = parseInt(req.params.id, 10);
+    if (Number.isNaN(scorecardId)) {
+      return res.status(400).json({ error: "Invalid scorecard id" });
+    }
+
+    // Soft delete by setting isActive to false
+    const [deleted] = await db
+      .update(interviewScorecards)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(interviewScorecards.id, scorecardId))
+      .returning();
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Scorecard not found" });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Delete scorecard error:", error);
+    res.status(500).json({ error: "Failed to delete scorecard" });
   }
 });
 
@@ -2925,8 +3234,72 @@ router.post("/email-templates", async (req: Request, res: Response) => {
   }
 });
 
+router.patch("/email-templates/:id", async (req: Request, res: Response) => {
+  try {
+    const templateId = parseInt(req.params.id, 10);
+    if (Number.isNaN(templateId)) {
+      return res.status(400).json({ error: "Invalid template id" });
+    }
+
+    const { name, subject, body, category, variables, isActive } = req.body;
+
+    const update: Record<string, any> = { updatedAt: new Date() };
+    if (name !== undefined) update.name = name;
+    if (subject !== undefined) update.subject = subject;
+    if (body !== undefined) update.body = body;
+    if (category !== undefined) update.category = category;
+    if (variables !== undefined) update.variables = Array.isArray(variables) ? variables : [];
+    if (isActive !== undefined) update.isActive = Boolean(isActive);
+
+    const [updated] = await db.update(emailTemplates)
+      .set(update)
+      .where(eq(emailTemplates.id, templateId))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Email template not found" });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Update email template error:", error);
+    res.status(500).json({ error: "HR email templates error (500)" });
+  }
+});
+
+router.delete("/email-templates/:id", async (req: Request, res: Response) => {
+  try {
+    const templateId = parseInt(req.params.id, 10);
+    if (Number.isNaN(templateId)) {
+      return res.status(400).json({ error: "Invalid template id" });
+    }
+
+    const [deleted] = await db.delete(emailTemplates)
+      .where(eq(emailTemplates.id, templateId))
+      .returning();
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Email template not found" });
+    }
+
+    res.json(deleted);
+  } catch (error) {
+    console.error("Delete email template error:", error);
+    res.status(500).json({ error: "HR email templates error (500)" });
+  }
+});
+
 // Recruiting Analytics
 router.use("/recruiting-analytics", recruitingAnalyticsRoutes);
+
+// Job Postings
+router.use("/job-postings", jobPostingsRoutes);
+
+// Offer Letters (PDF Generation)
+router.use(offerLettersRoutes);
+
+// HIRE Automation
+router.use(hireRouter);
 
 // Resume Uploader
 router.get("/territories", async (req: Request, res: Response) => {
@@ -3092,6 +3465,141 @@ router.post("/workflows", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Create workflow error:", error);
     res.status(500).json({ error: "HR workflows error (500)" });
+  }
+});
+
+// Workflow executions - Get all executions
+router.get("/workflow-executions", async (req: Request, res: Response) => {
+  try {
+    const executions = await db.select()
+      .from(workflowExecutions)
+      .orderBy(desc(workflowExecutions.startedAt))
+      .limit(100);
+
+    res.json(executions);
+  } catch (error) {
+    console.error("Workflow executions fetch error:", error);
+    res.status(500).json({ error: "HR workflow executions error (500)" });
+  }
+});
+
+// Workflow executions - Get execution by ID with steps
+router.get("/workflow-executions/:id", async (req: Request, res: Response) => {
+  try {
+    const executionId = parseInt(req.params.id);
+    if (Number.isNaN(executionId)) {
+      return res.status(400).json({ error: "Invalid execution id" });
+    }
+
+    const [execution] = await db.select()
+      .from(workflowExecutions)
+      .where(eq(workflowExecutions.id, executionId));
+
+    if (!execution) {
+      return res.status(404).json({ error: "Execution not found" });
+    }
+
+    const steps = await db.select()
+      .from(workflowStepExecutions)
+      .where(eq(workflowStepExecutions.executionId, executionId))
+      .orderBy(workflowStepExecutions.createdAt);
+
+    res.json({ ...execution, steps });
+  } catch (error) {
+    console.error("Workflow execution detail error:", error);
+    res.status(500).json({ error: "HR workflow executions error (500)" });
+  }
+});
+
+// Workflow executions - Get executions for a workflow
+router.get("/workflows/:id/executions", async (req: Request, res: Response) => {
+  try {
+    const workflowId = parseInt(req.params.id);
+    if (Number.isNaN(workflowId)) {
+      return res.status(400).json({ error: "Invalid workflow id" });
+    }
+
+    const executions = await db.select()
+      .from(workflowExecutions)
+      .where(eq(workflowExecutions.workflowId, workflowId))
+      .orderBy(desc(workflowExecutions.startedAt))
+      .limit(50);
+
+    res.json(executions);
+  } catch (error) {
+    console.error("Workflow executions by workflow error:", error);
+    res.status(500).json({ error: "HR workflow executions error (500)" });
+  }
+});
+
+// Workflow executions - Get executions for a candidate
+router.get("/candidates/:id/workflow-executions", async (req: Request, res: Response) => {
+  try {
+    const candidateId = parseInt(req.params.id);
+    if (Number.isNaN(candidateId)) {
+      return res.status(400).json({ error: "Invalid candidate id" });
+    }
+
+    const executions = await db.select()
+      .from(workflowExecutions)
+      .where(eq(workflowExecutions.candidateId, candidateId))
+      .orderBy(desc(workflowExecutions.startedAt));
+
+    res.json(executions);
+  } catch (error) {
+    console.error("Workflow executions by candidate error:", error);
+    res.status(500).json({ error: "HR workflow executions error (500)" });
+  }
+});
+
+// Workflow executions - Manual trigger
+router.post("/workflows/:id/execute", async (req: Request, res: Response) => {
+  try {
+    const workflowId = parseInt(req.params.id);
+    if (Number.isNaN(workflowId)) {
+      return res.status(400).json({ error: "Invalid workflow id" });
+    }
+
+    const { candidateId, context } = req.body;
+
+    if (!candidateId) {
+      return res.status(400).json({ error: "candidateId is required for manual workflow execution" });
+    }
+
+    // Check workflow exists
+    const [workflow] = await db.select()
+      .from(workflows)
+      .where(eq(workflows.id, workflowId));
+
+    if (!workflow) {
+      return res.status(404).json({ error: "Workflow not found" });
+    }
+
+    if (!workflow.isActive) {
+      return res.status(400).json({ error: "Workflow is not active" });
+    }
+
+    // Get candidate
+    const [candidate] = await db.select()
+      .from(candidates)
+      .where(eq(candidates.id, candidateId));
+
+    if (!candidate) {
+      return res.status(404).json({ error: "Candidate not found" });
+    }
+
+    // Execute workflow
+    const execution = await workflowExecutor.executeWorkflow(workflowId, {
+      candidateId,
+      candidate,
+      triggeredBy: (req as any).session?.userId,
+      ...context,
+    });
+
+    res.status(201).json(execution);
+  } catch (error) {
+    console.error("Manual workflow execution error:", error);
+    res.status(500).json({ error: "Failed to execute workflow" });
   }
 });
 
@@ -3487,6 +3995,107 @@ router.post("/onboarding/requirements/:id/upload", async (req: Request, res: Res
   } catch (error) {
     console.error("Upload requirement document error:", error);
     res.status(500).json({ error: "Failed to upload document" });
+  }
+});
+
+/**
+ * Auto-archive candidates in terminal states older than 30 days
+ * POST /api/hr/candidates/auto-archive
+ */
+router.post("/candidates/auto-archive", async (req: Request, res: Response) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Find candidates in terminal states older than 30 days
+    const terminalStates = [
+      'rejected',
+      'hired',
+      'withdrawn',
+      'DEAD_BY_CANDIDATE',
+      'DEAD_BY_COMPANY',
+      'DEAD_COMPENSATION',
+      'DEAD_LOCATION',
+      'DEAD_TIMING',
+      'DEAD_QUALIFICATIONS',
+      'DEAD_CULTURE_FIT',
+      'DEAD_OTHER'
+    ];
+
+    const candidatesToArchive = await db.select().from(candidates)
+      .where(and(
+        eq(candidates.isArchived, false),
+        inArray(candidates.status, terminalStates),
+        lte(candidates.updatedAt, thirtyDaysAgo)
+      ));
+
+    console.log(`📦 Found ${candidatesToArchive.length} candidates to auto-archive`);
+
+    if (candidatesToArchive.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No candidates to archive',
+        archived: 0,
+      });
+    }
+
+    // Archive them
+    const candidateIds = candidatesToArchive.map(c => c.id);
+    await db.update(candidates)
+      .set({
+        isArchived: true,
+        archivedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(inArray(candidates.id, candidateIds));
+
+    console.log(`✅ Archived ${candidatesToArchive.length} candidates`);
+
+    res.json({
+      success: true,
+      message: `Archived ${candidatesToArchive.length} candidates`,
+      archived: candidatesToArchive.length,
+      candidates: candidatesToArchive.map(c => ({
+        id: c.id,
+        name: `${c.firstName} ${c.lastName}`,
+        status: c.status,
+        updatedAt: c.updatedAt,
+      })),
+    });
+
+  } catch (error) {
+    console.error("Auto-archive error:", error);
+    res.status(500).json({ error: "Failed to auto-archive candidates" });
+  }
+});
+
+/**
+ * Debug endpoint to manually trigger interview overdue check
+ * POST /api/hr/debug/check-overdue-interviews
+ */
+router.post("/debug/check-overdue-interviews", async (req: Request, res: Response) => {
+  try {
+    const { checkOverdueInterviews } = await import("../../cron/interview-overdue-job.js");
+    await checkOverdueInterviews();
+    res.json({ success: true, message: "Interview overdue check completed" });
+  } catch (error: any) {
+    console.error("Interview overdue check failed:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Debug endpoint to manually trigger onboarding overdue check
+ * POST /api/hr/debug/check-overdue-onboarding
+ */
+router.post("/debug/check-overdue-onboarding", async (req: Request, res: Response) => {
+  try {
+    const { checkOverdueTasks } = await import("../../cron/onboarding-overdue-job.js");
+    await checkOverdueTasks();
+    res.json({ success: true, message: "Onboarding overdue check completed" });
+  } catch (error: any) {
+    console.error("Onboarding overdue check failed:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 

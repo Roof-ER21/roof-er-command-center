@@ -30,6 +30,8 @@ export function SourcerAssignmentDialog({ candidate, open, onOpenChange }: Sourc
   const [selectedSourcer, setSelectedSourcer] = useState<string>('');
   const [role, setRole] = useState<string>('PRIMARY');
   const [notes, setNotes] = useState<string>('');
+  const [referralName, setReferralName] = useState<string>('');
+  const [referralSource, setReferralSource] = useState<string>('');
 
   // Reset form when dialog opens/candidate changes
   useEffect(() => {
@@ -37,6 +39,8 @@ export function SourcerAssignmentDialog({ candidate, open, onOpenChange }: Sourc
       setSelectedSourcer(candidate.assignedTo ? String(candidate.assignedTo) : '');
       setRole('PRIMARY');
       setNotes('');
+      setReferralName(candidate.referralName || '');
+      setReferralSource('');
     }
   }, [open, candidate]);
 
@@ -49,7 +53,14 @@ export function SourcerAssignmentDialog({ candidate, open, onOpenChange }: Sourc
   const assignMutation = useMutation({
     mutationFn: async () => {
       if (!candidate || !selectedSourcer) return;
-      
+
+      // First, update referral information if provided
+      if (referralName.trim()) {
+        await apiRequest('PATCH', `/api/hr/candidates/${candidate.id}`, {
+          referralName: referralName.trim(),
+        });
+      }
+
       const res = await apiRequest('POST', `/api/hr/candidates/${candidate.id}/assign-sourcer`, {
         hrMemberId: parseInt(selectedSourcer),
         role,
@@ -137,11 +148,40 @@ export function SourcerAssignmentDialog({ candidate, open, onOpenChange }: Sourc
 
           <div className="space-y-2">
             <Label>Assignment Notes</Label>
-            <Textarea 
+            <Textarea
               placeholder="Add context for this assignment..."
-              value={notes} 
-              onChange={(e) => setNotes(e.target.value)} 
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Referred By (Optional)</Label>
+            <Input
+              placeholder="Enter referrer's name"
+              value={referralName}
+              onChange={(e) => setReferralName(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Track who referred this candidate
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Referral Source (Optional)</Label>
+            <Select value={referralSource} onValueChange={setReferralSource}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select referral source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="employee">Employee Referral</SelectItem>
+                <SelectItem value="external">External Referral</SelectItem>
+                <SelectItem value="job_fair">Job Fair</SelectItem>
+                <SelectItem value="linkedin">LinkedIn</SelectItem>
+                <SelectItem value="indeed">Indeed</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
