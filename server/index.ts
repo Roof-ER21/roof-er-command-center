@@ -43,6 +43,12 @@ import { startWorkflowScheduler } from "./cron/workflow-scheduler.js";
 // Import onboarding scheduler
 import { scheduleOverdueTaskCheck } from "./cron/onboarding-overdue-job.js";
 
+// Import PTO calendar sync scheduler
+import { startPtoCalendarSync } from "./cron/pto-calendar-sync.js";
+
+// Import PTO reminder scheduler
+import { schedulePtoReminderJob } from "./cron/pto-reminder-job.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -207,6 +213,12 @@ httpServer.listen(PORT, () => {
 
   // Start onboarding overdue task scheduler
   scheduleOverdueTaskCheck();
+
+  // Start PTO calendar sync scheduler
+  startPtoCalendarSync();
+
+  // Start PTO reminder scheduler
+  schedulePtoReminderJob();
 
   console.log(`
 🚀 Roof ER Command Center Server

@@ -12,6 +12,7 @@ import {
   ptoApprovedTemplate,
   ptoDeniedTemplate,
   ptoReminderTemplate,
+  ptoManagerReminderTemplate,
   rejectionByUsTemplate,
   withdrawnTemplate,
   noShowTemplate,
@@ -456,10 +457,15 @@ This is an automated message from Roof ER Command Center.
 
 /**
  * Send PTO request notification to manager/HR
+ *
+ * @param employee - Employee making the request
+ * @param request - PTO request details
+ * @param manager - Manager/approver receiving the notification
+ * @returns Promise with success status
  */
 export async function sendPTORequestNotification(
   employee: { firstName: string; lastName: string; email: string; position?: string | null },
-  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason: string },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason: string; isExempt?: boolean | null; createdByAdmin?: number | null },
   manager: { firstName: string; lastName: string; email: string }
 ): Promise<{ success: boolean; error?: string }> {
   const { subject, html, text } = ptoRequestSubmittedTemplate(employee, request, manager);
@@ -481,11 +487,31 @@ export async function sendPTORequestNotification(
 }
 
 /**
+ * Send PTO request notification to multiple approvers
+ *
+ * @param employee - Employee making the request
+ * @param request - PTO request details
+ * @param approvers - Array of approvers to notify
+ * @returns Promise<void>
+ */
+export async function sendPTORequestNotificationToApprovers(
+  employee: { firstName: string; lastName: string; email: string; position?: string | null },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason: string; isExempt?: boolean | null; createdByAdmin?: number | null },
+  approvers: Array<{ firstName: string; lastName: string; email: string }>
+): Promise<void> {
+  const notificationPromises = approvers.map(approver =>
+    sendPTORequestNotification(employee, request, approver)
+  );
+
+  await Promise.allSettled(notificationPromises);
+}
+
+/**
  * Send PTO approval notification to employee
  */
 export async function sendPTOApprovalEmail(
   employee: { firstName: string; lastName: string; email: string },
-  request: { id: number; startDate: string; endDate: string; days: number; type: string },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string; isExempt?: boolean | null; createdByAdmin?: number | null },
   approver: { firstName: string; lastName: string }
 ): Promise<{ success: boolean; error?: string }> {
   const { subject, html, text } = ptoApprovedTemplate(employee, request, approver);
@@ -535,13 +561,14 @@ export async function sendPTODenialEmail(
 }
 
 /**
- * Send PTO reminder (1 day before start date)
+ * Send PTO reminder (supports 1-day, 7-day, and 30-day reminders)
  */
 export async function sendPTOReminder(
   employee: { firstName: string; lastName: string; email: string },
-  request: { id: number; startDate: string; endDate: string; days: number; type: string }
+  request: { id: number; startDate: string; endDate: string; days: number; type: string },
+  daysUntil: number = 1
 ): Promise<{ success: boolean; error?: string }> {
-  const { subject, html, text } = ptoReminderTemplate(employee, request);
+  const { subject, html, text } = ptoReminderTemplate(employee, request, daysUntil);
 
   return sendEmail(
     employee.email,
@@ -554,6 +581,35 @@ export async function sendPTOReminder(
       ptoRequestId: request.id,
       startDate: request.startDate,
       endDate: request.endDate,
+      daysUntil,
+    }
+  );
+}
+
+/**
+ * Send PTO reminder to managers/approvers
+ */
+export async function sendPTOReminderToManagers(
+  employee: { firstName: string; lastName: string; email: string; position?: string | null; department?: string | null },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason: string },
+  manager: { firstName: string; lastName: string; email: string },
+  daysUntil: number
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html, text } = ptoManagerReminderTemplate(employee, request, daysUntil);
+
+  return sendEmail(
+    manager.email,
+    `${manager.firstName} ${manager.lastName}`,
+    subject,
+    html,
+    text,
+    'pto_reminder',
+    {
+      ptoRequestId: request.id,
+      employeeId: employee.email,
+      startDate: request.startDate,
+      endDate: request.endDate,
+      daysUntil,
     }
   );
 }
@@ -683,9 +739,11 @@ export default {
   sendWelcomeEmail,
   sendOnboardingReminderEmail,
   sendPTORequestNotification,
+  sendPTORequestNotificationToApprovers,
   sendPTOApprovalEmail,
   sendPTODenialEmail,
   sendPTOReminder,
+  sendPTOReminderToManagers,
   sendRejectionEmail,
   sendWithdrawalEmail,
   sendNoShowEmail,

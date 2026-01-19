@@ -7,6 +7,7 @@ import {
   territories,
   ptoRequests,
   companyPtoPolicy,
+  ptoPolicies,
   jobPostings,
   candidates,
   candidateNotes,
@@ -44,7 +45,7 @@ import {
 } from "../../../shared/schema.js";
 import { randomBytes } from "crypto";
 import { CronExpressionParser } from "cron-parser";
-import { eq, desc, inArray, sql, and, gte, lte } from "drizzle-orm";
+import { eq, desc, inArray, sql, and, or, gte, lte } from "drizzle-orm";
 import recruitingAnalyticsRoutes from "./recruiting-analytics";
 import jobPostingsRoutes from "./job-postings";
 import ptoPoliciesRoutes from "./pto-policies";
@@ -55,6 +56,7 @@ import {
   sendInterviewScheduledEmail,
   sendOfferEmail,
   sendPTORequestNotification,
+  sendPTORequestNotificationToApprovers,
   sendPTOApprovalEmail,
   sendPTODenialEmail,
   sendRejectionEmail,
@@ -62,14 +64,31 @@ import {
   sendNoShowEmail,
 } from "../../services/email.js";
 import {
+  getApproverUsers,
+  canUserApprovePTORequest,
+} from "../../services/pto-approval.js";
+import {
   createOnboardingRequirements,
   getRequirementsByCategory,
   calculateCompletionPercentage,
   isRequirementOverdue,
 } from "../../services/onboarding-requirements.js";
+import {
+  notifyApproversOfNewRequest,
+  notifyEmployeeOfDecision,
+} from "../../services/pto-notifications.js";
 import { workflowExecutor } from "../../services/workflow-executor.js";
 import { executeStatusAutomation } from "../../services/candidate-status-automation.js";
 import hireRouter from "./hire-endpoint.js";
+import { deductPtoBalance, restorePtoBalance } from "../../services/pto-balance.js";
+import { getWinterRequirementStatus } from "../../services/pto-winter.js";
+import {
+  createPtoCalendarEvent,
+  deletePtoCalendarEvent,
+  syncPtoToCalendar,
+} from "../../services/pto-calendar.js";
+import { calculateBusinessDays } from "../../services/business-days.js";
+import { validatePTORequest, calculatePTODays } from "../../services/pto-validation.js";
 
 const router = Router();
 const adminRoles = new Set([
@@ -577,7 +596,7 @@ router.get("/pto", async (req: Request, res: Response) => {
 // Create PTO request
 router.post("/pto", async (req: Request, res: Response) => {
   try {
-    const { startDate, endDate, type, reason, employeeId: requestedEmployeeId } = req.body;
+    const { startDate, endDate, type, reason, employeeId: requestedEmployeeId, isHalfDay } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -603,7 +622,28 @@ router.post("/pto", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid date range" });
     }
 
-    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    // Run all PTO validations (eligibility, duplicates, conflicts, future date)
+    const validationResult = await validatePTORequest(employeeId, start, end);
+    if (!validationResult.isValid) {
+      return res.status(400).json({
+        error: validationResult.error,
+        ...validationResult.details
+      });
+    }
+
+    // Calculate days (use business days if not a half-day request)
+    let days: number;
+    if (isHalfDay) {
+      // For half-day, validate it's a single day request
+      const calendarDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      if (calendarDays > 1) {
+        return res.status(400).json({ error: "Half-day requests are only valid for single-day periods" });
+      }
+      days = 0.5;
+    } else {
+      // Use business days calculation (excludes weekends and holidays)
+      days = await calculatePTODays(start, end);
+    }
 
     const [newRequest] = await db.insert(ptoRequests).values({
       employeeId,
@@ -615,51 +655,48 @@ router.post("/pto", async (req: Request, res: Response) => {
       status: "PENDING",
     }).returning();
 
-    // Send email notification to HR admins/managers
+    // Send email notification to appropriate approvers
     try {
       // Get employee details
       const [employee] = await db.select().from(users).where(eq(users.id, employeeId)).limit(1);
 
-      // Get all HR admins and managers
-      const managers = await db.select()
-        .from(users)
-        .where(
-          and(
-            eq(users.isActive, true),
-            sql`UPPER(${users.role}) IN ('SYSTEM_ADMIN', 'HR_ADMIN', 'GENERAL_MANAGER', 'MANAGER')`
-          )
-        );
+      // Get designated approvers for this employee
+      const approvers = await getApproverUsers(employeeId);
 
-      if (employee && managers.length > 0) {
-        // Send email to all managers/HR admins
-        for (const manager of managers) {
-          await sendPTORequestNotification(
-            {
-              firstName: employee.firstName,
-              lastName: employee.lastName,
-              email: employee.email,
-              position: employee.position,
-            },
-            {
-              id: newRequest.id,
-              startDate: newRequest.startDate,
-              endDate: newRequest.endDate,
-              days: newRequest.days,
-              type: newRequest.type,
-              reason: newRequest.reason,
-            },
-            {
-              firstName: manager.firstName,
-              lastName: manager.lastName,
-              email: manager.email,
-            }
-          );
-        }
-        console.log(`✅ Sent PTO request notification to ${managers.length} manager(s)`);
+      if (employee && approvers.length > 0) {
+        // Send in-app notifications to all approvers
+        const approverIds = approvers.map(a => a.id);
+        await notifyApproversOfNewRequest(newRequest, approverIds);
+
+        // Send email to designated approvers only
+        await sendPTORequestNotificationToApprovers(
+          {
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            email: employee.email,
+            position: employee.position,
+          },
+          {
+            id: newRequest.id,
+            startDate: newRequest.startDate,
+            endDate: newRequest.endDate,
+            days: newRequest.days,
+            type: newRequest.type,
+            reason: newRequest.reason,
+          },
+          approvers.map(approver => ({
+            firstName: approver.firstName,
+            lastName: approver.lastName,
+            email: approver.email,
+          }))
+        );
+        console.log(`✅ Sent PTO request notification (email + in-app) to ${approvers.length} designated approver(s) for ${employee.email}`);
+      } else if (employee) {
+        console.warn(`⚠️  No approvers found for employee ${employee.email}`);
       }
     } catch (emailError) {
       // Log email error but don't fail the request
-      console.error("Failed to send PTO request email notification:", emailError);
+      console.error("Failed to send PTO request notifications:", emailError);
     }
 
     res.status(201).json({
@@ -668,6 +705,117 @@ router.post("/pto", async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Create PTO error:", error);
+    res.status(500).json({ error: "Failed to create PTO request" });
+  }
+});
+
+// Admin create PTO for employee
+router.post("/pto/admin/create", async (req: Request, res: Response) => {
+  try {
+    // Only admin roles can create PTO for others
+    const userRole = req.user?.role?.toUpperCase() || "";
+    if (!["SYSTEM_ADMIN", "HR_ADMIN", "GENERAL_MANAGER"].includes(userRole)) {
+      return res.status(403).json({ error: "Not authorized to create PTO for employees" });
+    }
+
+    const { employeeId, startDate, endDate, type, reason, autoApprove, isExempt } = req.body;
+
+    if (!employeeId || !startDate || !endDate || !reason) {
+      return res.status(400).json({ error: "Missing required fields: employeeId, startDate, endDate, reason" });
+    }
+
+    // Validate employee exists
+    const [employee] = await db.select().from(users).where(eq(users.id, employeeId)).limit(1);
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+      return res.status(400).json({ error: "Invalid date range" });
+    }
+
+    // Calculate days (business days)
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    // Determine status
+    const status = autoApprove ? "APPROVED" : "PENDING";
+
+    const [newRequest] = await db.insert(ptoRequests).values({
+      employeeId,
+      startDate,
+      endDate,
+      days,
+      type: type || "VACATION",
+      reason,
+      status,
+      createdByAdmin: req.user?.id,
+      isExempt: isExempt || false,
+      reviewedBy: autoApprove ? req.user?.id : null,
+      reviewedAt: autoApprove ? new Date() : null,
+    }).returning();
+
+    // Send email notification to employee
+    try {
+      const admin = {
+        firstName: req.user?.firstName || "Admin",
+        lastName: req.user?.lastName || "",
+      };
+
+      const requestData = {
+        id: newRequest.id,
+        startDate: newRequest.startDate,
+        endDate: newRequest.endDate,
+        days: newRequest.days,
+        type: newRequest.type,
+        isExempt: newRequest.isExempt,
+        createdByAdmin: newRequest.createdByAdmin,
+      };
+
+      const employeeData = {
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        email: employee.email,
+      };
+
+      if (autoApprove) {
+        await sendPTOApprovalEmail(employeeData, requestData, admin);
+        console.log(`✅ Sent admin-created PTO approval email to ${employee.email}`);
+
+        // Create calendar events for auto-approved PTO
+        try {
+          const calendarResult = await createPtoCalendarEvent(newRequest, employee);
+          if (calendarResult.googleEventId || calendarResult.hrCalendarEventId) {
+            // Update PTO request with calendar event IDs
+            const updateData: any = {
+              googleEventId: calendarResult.googleEventId || null,
+              hrCalendarEventId: calendarResult.hrCalendarEventId || null,
+              updatedAt: new Date(),
+            };
+            await db.update(ptoRequests)
+              .set(updateData)
+              .where(eq(ptoRequests.id, newRequest.id));
+            console.log(`✅ Created calendar events for admin-created PTO request #${newRequest.id}`);
+          }
+        } catch (calendarError) {
+          console.error("Failed to create calendar events for admin-created PTO:", calendarError);
+        }
+      } else {
+        // Send notification that PTO was created and pending approval
+        await sendPTORequestNotification(employeeData, requestData, { ...admin, email: employee.email });
+        console.log(`✅ Sent admin-created PTO notification to ${employee.email}`);
+      }
+    } catch (emailError) {
+      console.error("Failed to send admin-created PTO email notification:", emailError);
+    }
+
+    res.status(201).json({
+      ...newRequest,
+      status: newRequest.status?.toLowerCase() || "pending",
+    });
+  } catch (error) {
+    console.error("Admin create PTO error:", error);
     res.status(500).json({ error: "Failed to create PTO request" });
   }
 });
@@ -684,7 +832,7 @@ router.patch("/pto/:id", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid PTO request id" });
     }
 
-    const { status } = req.body;
+    const { status, isExempt } = req.body;
     if (!status) {
       return res.status(400).json({ error: "PTO status is required" });
     }
@@ -694,13 +842,94 @@ router.patch("/pto/:id", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid PTO status" });
     }
 
+    // Get the PTO request to check employee
+    const [existingRequest] = await db
+      .select()
+      .from(ptoRequests)
+      .where(eq(ptoRequests.id, requestId))
+      .limit(1);
+
+    if (!existingRequest) {
+      return res.status(404).json({ error: "PTO request not found" });
+    }
+
+    // Check if user is authorized to approve this specific request
+    const userEmail = req.user?.email || "";
+    const isAuthorized = await canUserApprovePTORequest(userEmail, existingRequest.employeeId);
+
+    if (!isAuthorized) {
+      return res.status(403).json({
+        error: "You are not authorized to approve this request",
+        message: "This request requires approval from designated approvers only"
+      });
+    }
+
+    // Only SYSTEM_ADMIN, HR_ADMIN, or GENERAL_MANAGER can mark requests as exempt
+    if (isExempt !== undefined && isExempt === true) {
+      const userRole = req.user?.role?.toUpperCase() || "";
+      if (!["SYSTEM_ADMIN", "HR_ADMIN", "GENERAL_MANAGER"].includes(userRole)) {
+        return res.status(403).json({ error: "Only HR admins and General Managers can mark PTO as exempt" });
+      }
+    }
+
+    // BALANCE VALIDATION: Check if employee has sufficient PTO balance before approving
+    if (normalizedStatus === 'APPROVED' && !isExempt) {
+      // Get employee's PTO policy
+      const [policy] = await db.select()
+        .from(ptoPolicies)
+        .where(eq(ptoPolicies.employeeId, existingRequest.employeeId))
+        .limit(1);
+
+      if (policy) {
+        // Get all pending requests for this employee (excluding current one)
+        const pendingRequests = await db.select()
+          .from(ptoRequests)
+          .where(
+            and(
+              eq(ptoRequests.employeeId, existingRequest.employeeId),
+              eq(ptoRequests.status, 'PENDING'),
+              sql`${ptoRequests.id} != ${requestId}`
+            )
+          );
+
+        // Calculate total pending days
+        const totalPendingDays = pendingRequests.reduce((sum, req) => sum + (req.days || 0), 0);
+
+        // Calculate required days (current request + pending)
+        const requiredDays = (existingRequest.days || 0) + totalPendingDays;
+
+        // Check if sufficient balance (considering type-specific allocations if needed)
+        if (policy.remainingDays < requiredDays) {
+          console.log(`❌ PTO approval blocked: Insufficient balance. Available: ${policy.remainingDays}, Required: ${requiredDays} (${existingRequest.days} current + ${totalPendingDays} pending)`);
+          return res.status(400).json({
+            error: "Insufficient PTO balance",
+            available: policy.remainingDays,
+            required: existingRequest.days,
+            pending: totalPendingDays,
+            message: `Employee has ${policy.remainingDays} days available, but needs ${requiredDays} days (${existingRequest.days} for this request + ${totalPendingDays} days pending)`
+          });
+        }
+
+        console.log(`✅ Balance check passed: ${policy.remainingDays} days available, ${requiredDays} days required`);
+      } else {
+        console.warn(`⚠️ No PTO policy found for employee ${existingRequest.employeeId}, skipping balance check`);
+      }
+    }
+
+    const updateData: any = {
+      status: normalizedStatus as 'PENDING' | 'APPROVED' | 'DENIED',
+      reviewedBy: req.user?.id || null,
+      reviewedAt: new Date(),
+      reviewNotes: req.body.reviewNotes || null,
+    };
+
+    // Add isExempt to update if provided
+    if (isExempt !== undefined) {
+      updateData.isExempt = isExempt;
+    }
+
     const [updated] = await db.update(ptoRequests)
-      .set({
-        status: normalizedStatus as 'PENDING' | 'APPROVED' | 'DENIED',
-        reviewedBy: req.user?.id || null,
-        reviewedAt: new Date(),
-        reviewNotes: req.body.reviewNotes || null,
-      })
+      .set(updateData)
       .where(eq(ptoRequests.id, requestId))
       .returning();
 
@@ -725,6 +954,8 @@ router.patch("/pto/:id", async (req: Request, res: Response) => {
           endDate: updated.endDate,
           days: updated.days,
           type: updated.type,
+          isExempt: updated.isExempt,
+          createdByAdmin: updated.createdByAdmin,
         };
 
         const employeeData = {
@@ -734,11 +965,61 @@ router.patch("/pto/:id", async (req: Request, res: Response) => {
         };
 
         if (normalizedStatus === 'APPROVED') {
+          // Send in-app notification
+          await notifyEmployeeOfDecision(updated, 'approved', req.body.reviewNotes);
+
+          // Send email
           await sendPTOApprovalEmail(employeeData, requestData, approver);
-          console.log(`✅ Sent PTO approval email to ${employee.email}`);
+          console.log(`✅ Sent PTO approval notification (email + in-app) to ${employee.email}`);
+
+          // Create calendar events for approved PTO
+          try {
+            const calendarResult = await createPtoCalendarEvent(updated, employee);
+            if (calendarResult.googleEventId || calendarResult.hrCalendarEventId) {
+              // Update PTO request with calendar event IDs
+              const calendarUpdateData: any = {
+                googleEventId: calendarResult.googleEventId || null,
+                hrCalendarEventId: calendarResult.hrCalendarEventId || null,
+                updatedAt: new Date(),
+              };
+              await db.update(ptoRequests)
+                .set(calendarUpdateData)
+                .where(eq(ptoRequests.id, updated.id));
+              console.log(`✅ Created calendar events for PTO request #${updated.id}`);
+            }
+          } catch (calendarError) {
+            console.error("Failed to create calendar events:", calendarError);
+          }
         } else if (normalizedStatus === 'DENIED') {
+          // Send in-app notification
+          await notifyEmployeeOfDecision(updated, 'denied', req.body.reviewNotes);
+
+          // Send email
           await sendPTODenialEmail(employeeData, requestData, approver, req.body.reviewNotes);
-          console.log(`✅ Sent PTO denial email to ${employee.email}`);
+          console.log(`✅ Sent PTO denial notification (email + in-app) to ${employee.email}`);
+
+          // Delete calendar events if they exist
+          if (updated.googleEventId || updated.hrCalendarEventId) {
+            try {
+              await deletePtoCalendarEvent(
+                updated.googleEventId,
+                updated.hrCalendarEventId,
+                employee.email
+              );
+              // Clear calendar event IDs from database
+              const clearCalendarData: any = {
+                googleEventId: null,
+                hrCalendarEventId: null,
+                updatedAt: new Date(),
+              };
+              await db.update(ptoRequests)
+                .set(clearCalendarData)
+                .where(eq(ptoRequests.id, updated.id));
+              console.log(`✅ Deleted calendar events for PTO request #${updated.id}`);
+            } catch (calendarError) {
+              console.error("Failed to delete calendar events:", calendarError);
+            }
+          }
         }
       }
     } catch (emailError) {
@@ -753,6 +1034,55 @@ router.patch("/pto/:id", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Update PTO error:", error);
     res.status(500).json({ error: "Failed to update PTO request" });
+  }
+});
+
+// Manual PTO calendar sync endpoint
+router.post("/pto/sync-calendar", async (req: Request, res: Response) => {
+  try {
+    // Only admin roles can manually trigger calendar sync
+    const userRole = req.user?.role?.toUpperCase() || "";
+    if (!["SYSTEM_ADMIN", "HR_ADMIN", "GENERAL_MANAGER"].includes(userRole)) {
+      return res.status(403).json({ error: "Not authorized to sync PTO calendar" });
+    }
+
+    console.log(`🔧 Manual PTO calendar sync triggered by ${req.user?.email}`);
+
+    const result = await syncPtoToCalendar();
+
+    res.json({
+      success: true,
+      synced: result.synced,
+      errors: result.errors,
+      message: `Successfully synced ${result.synced} PTO requests to calendar${result.errors > 0 ? ` with ${result.errors} errors` : ''}`,
+    });
+  } catch (error) {
+    console.error("Manual PTO calendar sync error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to sync PTO calendar",
+    });
+  }
+});
+
+// Get winter PTO requirement status for employee
+router.get("/pto/winter-status/:employeeId", async (req: Request, res: Response) => {
+  try {
+    const employeeId = parseInt(req.params.employeeId);
+    if (Number.isNaN(employeeId)) {
+      return res.status(400).json({ error: "Invalid employee id" });
+    }
+
+    // Verify user has access to view this employee's data
+    if (req.user?.id !== employeeId && !managerRoles.has(req.user?.role?.toUpperCase() || "")) {
+      return res.status(403).json({ error: "Not authorized to view this employee's PTO status" });
+    }
+
+    const winterStatus = await getWinterRequirementStatus(employeeId);
+    res.json(winterStatus);
+  } catch (error) {
+    console.error("Winter status fetch error:", error);
+    res.status(500).json({ error: "Failed to fetch winter PTO status" });
   }
 });
 
@@ -4095,6 +4425,35 @@ router.post("/debug/check-overdue-onboarding", async (req: Request, res: Respons
     res.json({ success: true, message: "Onboarding overdue check completed" });
   } catch (error: any) {
     console.error("Onboarding overdue check failed:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/hr/debug/send-pto-reminders - Manual trigger for PTO reminders
+router.post("/debug/send-pto-reminders", async (req: Request, res: Response) => {
+  try {
+    const userRole = req.user?.role?.toUpperCase() || "";
+    if (!["SYSTEM_ADMIN", "HR_ADMIN"].includes(userRole)) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    console.log(`🚀 [DEBUG] Manually triggering PTO reminder job (requested by user ${req.user?.email})...`);
+
+    const { runPtoReminderJobNow } = await import("../../cron/pto-reminder-job.js");
+    const results = await runPtoReminderJobNow();
+
+    res.json({
+      success: true,
+      message: "PTO reminder job completed",
+      results: {
+        sent30Day: results.sent30Day,
+        sent7Day: results.sent7Day,
+        sent1Day: results.sent1Day,
+        errors: results.errors,
+      },
+    });
+  } catch (error: any) {
+    console.error("Debug PTO reminder job error:", error);
     res.status(500).json({ error: error.message });
   }
 });

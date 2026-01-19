@@ -10,6 +10,7 @@ import {
 } from "../../../shared/schema";
 import { eq, inArray, and } from "drizzle-orm";
 import { PTO_POLICY, getPtoAllocation } from "../../../shared/constants/pto-policy";
+import { recalculatePtoBalance, getPtoBalance, getTypedBalance } from "../../services/pto-balance";
 
 const router = Router();
 
@@ -154,14 +155,14 @@ router.put("/individual-policies/:id", async (req, res) => {
 router.post("/admin/reset-all", async (req, res) => {
   try {
     const allActiveUsers = await db.select().from(users).where(eq(users.isActive, true));
-    
+
     const results = { updated: 0, created: 0 };
-    
+
     for (const employee of allActiveUsers) {
       const allocation = getPtoAllocation(employee.employmentType ?? undefined, employee.department ?? undefined);
-      
+
       const [existing] = await db.select().from(ptoPolicies).where(eq(ptoPolicies.employeeId, employee.id));
-      
+
       if (existing) {
         await db.update(ptoPolicies).set({
           vacationDays: allocation.vacationDays,
@@ -189,11 +190,100 @@ router.post("/admin/reset-all", async (req, res) => {
         results.created++;
       }
     }
-    
+
     res.json({ success: true, message: `Reset complete: ${results.updated} updated, ${results.created} created`, results });
   } catch (error) {
     console.error("Reset all PTO error:", error);
     res.status(500).json({ error: "Failed to reset all PTO" });
+  }
+});
+
+// Recalculate balance for a specific employee
+router.post("/balance/recalculate/:employeeId", async (req, res) => {
+  try {
+    const employeeId = parseInt(req.params.employeeId);
+    if (Number.isNaN(employeeId)) {
+      return res.status(400).json({ error: "Invalid employee id" });
+    }
+
+    const year = req.body.year ? parseInt(req.body.year) : undefined;
+
+    const result = await recalculatePtoBalance(employeeId, year);
+
+    res.json({
+      success: true,
+      employeeId,
+      year: year || new Date().getFullYear(),
+      ...result,
+      message: `Recalculated PTO balance: ${result.usedDays}/${result.totalDays} days used, ${result.remainingDays} remaining`,
+    });
+  } catch (error) {
+    console.error("Recalculate balance error:", error);
+    res.status(500).json({ error: "Failed to recalculate balance" });
+  }
+});
+
+// Recalculate balances for all employees
+router.post("/balance/recalculate-all", async (req, res) => {
+  try {
+    const year = req.body.year ? parseInt(req.body.year) : undefined;
+    const allUsers = await db.select().from(users).where(eq(users.isActive, true));
+
+    const results = [];
+    let errors = 0;
+
+    for (const user of allUsers) {
+      try {
+        const result = await recalculatePtoBalance(user.id, year);
+        results.push({
+          employeeId: user.id,
+          name: `${user.firstName} ${user.lastName}`,
+          ...result,
+        });
+      } catch (err) {
+        console.error(`Failed to recalculate for employee ${user.id}:`, err);
+        errors++;
+      }
+    }
+
+    res.json({
+      success: true,
+      year: year || new Date().getFullYear(),
+      processed: results.length,
+      errors,
+      results,
+    });
+  } catch (error) {
+    console.error("Recalculate all balances error:", error);
+    res.status(500).json({ error: "Failed to recalculate all balances" });
+  }
+});
+
+// Get employee balance with type breakdown
+router.get("/balance/:employeeId", async (req, res) => {
+  try {
+    const employeeId = parseInt(req.params.employeeId);
+    if (Number.isNaN(employeeId)) {
+      return res.status(400).json({ error: "Invalid employee id" });
+    }
+
+    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+
+    const balance = await getPtoBalance(employeeId);
+    if (!balance) {
+      return res.status(404).json({ error: "No PTO policy found for employee" });
+    }
+
+    const typedBalance = await getTypedBalance(employeeId, year);
+
+    res.json({
+      ...balance,
+      byType: typedBalance,
+      year: year || new Date().getFullYear(),
+    });
+  } catch (error) {
+    console.error("Get balance error:", error);
+    res.status(500).json({ error: "Failed to get balance" });
   }
 });
 

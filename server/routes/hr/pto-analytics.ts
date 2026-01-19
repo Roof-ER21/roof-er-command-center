@@ -8,14 +8,15 @@ const router = Router();
 router.get("/overview", async (req, res) => {
   try {
     const allRequests = await db.select().from(ptoRequests);
-    const approvedRequests = allRequests.filter(r => r.status === "APPROVED");
-    
+    // Exclude exempt requests from analytics
+    const approvedRequests = allRequests.filter(r => r.status === "APPROVED" && !r.isExempt);
+
     const now = new Date();
     const yearStart = new Date(now.getFullYear(), 0, 1);
-    
+
     const usedThisYear = approvedRequests.filter(r => new Date(r.startDate) >= yearStart).reduce((sum, r) => sum + Number(r.days), 0);
-    
-    // Simple grouped stats
+
+    // Simple grouped stats (excluding exempt)
     const byType = approvedRequests.reduce((acc, r) => {
       acc[r.type] = (acc[r.type] || 0) + Number(r.days);
       return acc;
@@ -37,8 +38,10 @@ router.get("/usage", async (req, res) => {
   try {
     const approvedRequests = await db.select().from(ptoRequests).where(eq(ptoRequests.status, "APPROVED"));
     const allUsers = await db.select().from(users);
-    
+
+    // Exclude exempt requests from usage analytics
     const usageByEmployee = approvedRequests.reduce((acc, r) => {
+      if (r.isExempt) return acc; // Skip exempt requests
       const user = allUsers.find(u => u.id === r.employeeId);
       const name = user ? `${user.firstName} ${user.lastName}` : "Unknown";
       if (!acc[name]) acc[name] = 0;

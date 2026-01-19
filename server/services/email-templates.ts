@@ -345,10 +345,30 @@ This is an automated message from Roof ER Command Center.
  */
 export function ptoRequestSubmittedTemplate(
   employee: { firstName: string; lastName: string; email: string; position?: string | null },
-  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason: string },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason: string; isExempt?: boolean | null; createdByAdmin?: number | null },
   manager: { firstName: string; email: string }
 ): { subject: string; html: string; text: string } {
   const subject = `PTO Request from ${employee.firstName} ${employee.lastName}`;
+
+  // Create badge HTML
+  const badges = [];
+  if (request.isExempt) {
+    badges.push('<span style="display: inline-block; background: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-right: 8px;">EXEMPT</span>');
+  }
+  if (request.days === 0.5) {
+    badges.push('<span style="display: inline-block; background: #3b82f6; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-right: 8px;">HALF DAY</span>');
+  }
+  if (request.createdByAdmin) {
+    badges.push('<span style="display: inline-block; background: #8b5cf6; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-right: 8px;">ADMIN CREATED</span>');
+  }
+  const badgeHTML = badges.length > 0 ? `<div style="margin: 10px 0;">${badges.join('')}</div>` : '';
+
+  // Create badge text
+  const badgeTexts = [];
+  if (request.isExempt) badgeTexts.push('[EXEMPT]');
+  if (request.days === 0.5) badgeTexts.push('[HALF DAY]');
+  if (request.createdByAdmin) badgeTexts.push('[ADMIN CREATED]');
+  const badgeText = badgeTexts.length > 0 ? ` ${badgeTexts.join(' ')}` : '';
 
   const html = `
     <!DOCTYPE html>
@@ -369,6 +389,8 @@ export function ptoRequestSubmittedTemplate(
           <p>Hi ${manager.firstName},</p>
 
           <p><strong>${employee.firstName} ${employee.lastName}</strong>${employee.position ? ` (${employee.position})` : ''} has submitted a PTO request that requires your approval.</p>
+
+          ${badgeHTML}
 
           <div style="background: #fef3c7; padding: 20px; border-left: 4px solid #f59e0b; margin: 25px 0;">
             <h3 style="margin: 0 0 15px 0; color: #d97706;">Request Details</h3>
@@ -397,7 +419,7 @@ export function ptoRequestSubmittedTemplate(
   `;
 
   const text = `
-🗓️ New PTO Request - Needs Your Approval
+🗓️ New PTO Request - Needs Your Approval${badgeText}
 
 Hi ${manager.firstName},
 
@@ -410,7 +432,7 @@ Type: ${request.type}
 Start Date: ${new Date(request.startDate).toLocaleDateString()}
 End Date: ${new Date(request.endDate).toLocaleDateString()}
 Duration: ${request.days} day${request.days > 1 ? 's' : ''}
-Reason: ${request.reason}
+Reason: ${request.reason}${badgeText}
 
 Please review this request in the HR portal.
 
@@ -430,10 +452,30 @@ This is an automated message from Roof ER Command Center.
  */
 export function ptoApprovedTemplate(
   employee: { firstName: string; lastName: string; email: string },
-  request: { startDate: string; endDate: string; days: number; type: string },
+  request: { startDate: string; endDate: string; days: number; type: string; isExempt?: boolean | null; createdByAdmin?: number | null },
   approver: { firstName: string; lastName: string }
 ): { subject: string; html: string; text: string } {
   const subject = `PTO Request Approved - ${new Date(request.startDate).toLocaleDateString()}`;
+
+  // Create badge HTML
+  const badges = [];
+  if (request.isExempt) {
+    badges.push('<span style="display: inline-block; background: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-right: 8px;">EXEMPT</span>');
+  }
+  if (request.days === 0.5) {
+    badges.push('<span style="display: inline-block; background: #3b82f6; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-right: 8px;">HALF DAY</span>');
+  }
+  if (request.createdByAdmin) {
+    badges.push('<span style="display: inline-block; background: #8b5cf6; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-right: 8px;">ADMIN CREATED</span>');
+  }
+  const badgeHTML = badges.length > 0 ? `<div style="margin: 10px 0;">${badges.join('')}</div>` : '';
+
+  // Create badge text
+  const badgeTexts = [];
+  if (request.isExempt) badgeTexts.push('[EXEMPT]');
+  if (request.days === 0.5) badgeTexts.push('[HALF DAY]');
+  if (request.createdByAdmin) badgeTexts.push('[ADMIN CREATED]');
+  const badgeText = badgeTexts.length > 0 ? ` ${badgeTexts.join(' ')}` : '';
 
   const html = `
     <!DOCTYPE html>
@@ -454,6 +496,8 @@ export function ptoApprovedTemplate(
           <p>Hi ${employee.firstName},</p>
 
           <p>Your PTO request has been <strong>approved</strong> by ${approver.firstName} ${approver.lastName}.</p>
+
+          ${badgeHTML}
 
           <div style="background: #f0fdf4; padding: 20px; border-left: 4px solid #10b981; margin: 25px 0;">
             <h3 style="margin: 0 0 15px 0; color: #10b981;">Approved Time Off</h3>
@@ -482,7 +526,7 @@ export function ptoApprovedTemplate(
   `;
 
   const text = `
-✅ PTO Request Approved - Your time off has been approved
+✅ PTO Request Approved - Your time off has been approved${badgeText}
 
 Hi ${employee.firstName},
 
@@ -492,7 +536,7 @@ APPROVED TIME OFF:
 Type: ${request.type}
 Start Date: ${new Date(request.startDate).toLocaleDateString()}
 End Date: ${new Date(request.endDate).toLocaleDateString()}
-Duration: ${request.days} day${request.days > 1 ? 's' : ''}
+Duration: ${request.days} day${request.days > 1 ? 's' : ''}${badgeText}
 
 📅 Reminder: You'll receive a reminder email 1 day before your time off begins.
 
@@ -595,13 +639,34 @@ This is an automated message from Roof ER Command Center.
 }
 
 /**
- * PTO reminder email template (1 day before)
+ * PTO reminder email template (supports 30-day, 7-day, and 1-day reminders)
  */
 export function ptoReminderTemplate(
   employee: { firstName: string; lastName: string },
-  request: { startDate: string; endDate: string; days: number; type: string }
+  request: { startDate: string; endDate: string; days: number; type: string },
+  daysUntil: number = 1
 ): { subject: string; html: string; text: string } {
-  const subject = `Reminder: Your PTO Starts Tomorrow`;
+  let subject: string;
+  let headerText: string;
+  let reminderMessage: string;
+  let iconEmoji: string;
+
+  if (daysUntil === 30) {
+    subject = `PTO Notice: Your Time Off Starts in 30 Days`;
+    headerText = '30-Day Notice';
+    reminderMessage = `This is a 30-day advance notice that your approved time off begins in <strong>30 days</strong>.`;
+    iconEmoji = '📅';
+  } else if (daysUntil === 7) {
+    subject = `PTO Reminder: Your Time Off Starts in 7 Days`;
+    headerText = '7-Day Reminder';
+    reminderMessage = `This is a reminder that your approved time off begins in <strong>7 days</strong>.`;
+    iconEmoji = '⏰';
+  } else {
+    subject = `Reminder: Your PTO Starts Tomorrow`;
+    headerText = 'Time Off Reminder';
+    reminderMessage = `This is a friendly reminder that your approved time off begins <strong>tomorrow</strong>.`;
+    iconEmoji = '🏖️';
+  }
 
   const html = `
     <!DOCTYPE html>
@@ -612,16 +677,16 @@ export function ptoReminderTemplate(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">🏖️ PTO Reminder</h1>
-          <p style="color: #f0f0f0; margin: 10px 0 0 0;">Your time off starts tomorrow</p>
+          <h1 style="color: white; margin: 0; font-size: 28px;">${iconEmoji} PTO ${headerText}</h1>
+          <p style="color: #f0f0f0; margin: 10px 0 0 0;">Your time off starts ${daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`}</p>
         </div>
 
         <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
-          <h2 style="color: #667eea; margin-top: 0;">Time Off Reminder</h2>
+          <h2 style="color: #667eea; margin-top: 0;">${headerText}</h2>
 
           <p>Hi ${employee.firstName},</p>
 
-          <p>This is a friendly reminder that your approved time off begins <strong>tomorrow</strong>.</p>
+          <p>${reminderMessage}</p>
 
           <div style="background: #e3f2fd; padding: 20px; border-left: 4px solid #2196f3; margin: 25px 0;">
             <h3 style="margin: 0 0 15px 0; color: #1976d2;">Your Time Off</h3>
@@ -631,6 +696,7 @@ export function ptoReminderTemplate(
             <p style="margin: 5px 0;"><strong>Duration:</strong> ${request.days} day${request.days > 1 ? 's' : ''}</p>
           </div>
 
+          ${daysUntil <= 7 ? `
           <h3 style="color: #667eea;">Before You Go</h3>
           <ul style="line-height: 1.8;">
             <li>Complete any urgent tasks</li>
@@ -638,8 +704,18 @@ export function ptoReminderTemplate(
             <li>Notify your team and clients</li>
             <li>Hand off any critical responsibilities</li>
           </ul>
+          ` : `
+          <h3 style="color: #667eea;">Coverage Planning</h3>
+          <p>With 30 days notice, now is a good time to:</p>
+          <ul style="line-height: 1.8;">
+            <li>Coordinate with your team on coverage</li>
+            <li>Document critical processes and handoffs</li>
+            <li>Identify any potential scheduling conflicts</li>
+            <li>Ensure projects are on track before departure</li>
+          </ul>
+          `}
 
-          <p style="margin-top: 30px;">Enjoy your time off!</p>
+          <p style="margin-top: 30px;">${daysUntil === 30 ? 'Thank you for the advance notice!' : 'Enjoy your time off!'}</p>
 
           <p>Best regards,<br><strong>Roof ER HR Team</strong></p>
         </div>
@@ -653,11 +729,11 @@ export function ptoReminderTemplate(
   `;
 
   const text = `
-🏖️ PTO Reminder - Your time off starts tomorrow
+${iconEmoji} PTO ${headerText} - Your time off starts ${daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`}
 
 Hi ${employee.firstName},
 
-This is a friendly reminder that your approved time off begins tomorrow.
+${reminderMessage.replace(/<\/?strong>/g, '')}
 
 YOUR TIME OFF:
 Type: ${request.type}
@@ -665,13 +741,150 @@ Start Date: ${new Date(request.startDate).toLocaleDateString()}
 End Date: ${new Date(request.endDate).toLocaleDateString()}
 Duration: ${request.days} day${request.days > 1 ? 's' : ''}
 
-BEFORE YOU GO:
+${daysUntil <= 7 ? `BEFORE YOU GO:
 - Complete any urgent tasks
 - Set up your out-of-office message
 - Notify your team and clients
-- Hand off any critical responsibilities
+- Hand off any critical responsibilities` : `COVERAGE PLANNING:
+With 30 days notice, now is a good time to:
+- Coordinate with your team on coverage
+- Document critical processes and handoffs
+- Identify any potential scheduling conflicts
+- Ensure projects are on track before departure`}
 
-Enjoy your time off!
+${daysUntil === 30 ? 'Thank you for the advance notice!' : 'Enjoy your time off!'}
+
+Best regards,
+Roof ER HR Team
+
+---
+This is an automated message from Roof ER Command Center.
+© ${new Date().getFullYear()} Roof ER. All rights reserved.
+  `.trim();
+
+  return { subject, html, text };
+}
+
+/**
+ * PTO reminder email template for managers (notifying them of upcoming employee time off)
+ */
+export function ptoManagerReminderTemplate(
+  employee: { firstName: string; lastName: string; position?: string | null; department?: string | null },
+  request: { startDate: string; endDate: string; days: number; type: string; reason: string },
+  daysUntil: number
+): { subject: string; html: string; text: string } {
+  let noticeType: string;
+  if (daysUntil === 30) {
+    noticeType = '30-Day Notice';
+  } else if (daysUntil === 7) {
+    noticeType = '7-Day Reminder';
+  } else {
+    noticeType = '1-Day Reminder';
+  }
+
+  const subject = `PTO ${noticeType}: ${employee.firstName} ${employee.lastName} - ${daysUntil} Day${daysUntil !== 1 ? 's' : ''} Away`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">🗓️ PTO ${noticeType}</h1>
+          <p style="color: #f0f0f0; margin: 10px 0 0 0;">Employee Time Off Notification</p>
+        </div>
+
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: #3b82f6; margin-top: 0;">Upcoming Time Off</h2>
+
+          <p>This is a ${noticeType.toLowerCase()} that <strong>${employee.firstName} ${employee.lastName}</strong>${employee.position ? ` (${employee.position})` : ''} has approved time off starting in <strong>${daysUntil} day${daysUntil !== 1 ? 's' : ''}</strong>.</p>
+
+          <div style="background: #dbeafe; padding: 20px; border-left: 4px solid #3b82f6; margin: 25px 0;">
+            <h3 style="margin: 0 0 15px 0; color: #1d4ed8;">Employee & Time Off Details</h3>
+            <p style="margin: 5px 0;"><strong>Employee:</strong> ${employee.firstName} ${employee.lastName}</p>
+            ${employee.position ? `<p style="margin: 5px 0;"><strong>Position:</strong> ${employee.position}</p>` : ''}
+            ${employee.department ? `<p style="margin: 5px 0;"><strong>Department:</strong> ${employee.department}</p>` : ''}
+            <p style="margin: 15px 0 5px 0;"><strong>Type:</strong> ${request.type}</p>
+            <p style="margin: 5px 0;"><strong>Start Date:</strong> ${new Date(request.startDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>End Date:</strong> ${new Date(request.endDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>Duration:</strong> ${request.days} day${request.days > 1 ? 's' : ''}</p>
+            <p style="margin: 5px 0;"><strong>Reason:</strong> ${request.reason}</p>
+          </div>
+
+          ${daysUntil === 30 ? `
+          <div style="background: #fef3c7; padding: 15px; border-left: 4px solid #f59e0b; margin: 25px 0;">
+            <h3 style="margin: 0 0 10px 0; color: #d97706;">Coverage Planning Suggestions</h3>
+            <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+              <li>Review team capacity and workload distribution</li>
+              <li>Identify backup personnel for critical responsibilities</li>
+              <li>Schedule knowledge transfer sessions if needed</li>
+              <li>Update project timelines to account for absence</li>
+              <li>Brief team members on coverage expectations</li>
+            </ul>
+          </div>
+          ` : daysUntil === 7 ? `
+          <div style="background: #fef3c7; padding: 15px; border-left: 4px solid #f59e0b; margin: 25px 0;">
+            <h3 style="margin: 0 0 10px 0; color: #d97706;">Week-Before Checklist</h3>
+            <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+              <li>Confirm coverage assignments are in place</li>
+              <li>Ensure handoff documentation is complete</li>
+              <li>Brief team on any special procedures</li>
+              <li>Review emergency contact protocols</li>
+            </ul>
+          </div>
+          ` : `
+          <div style="background: #fef3c7; padding: 15px; border-left: 4px solid #f59e0b; margin: 25px 0;">
+            <h3 style="margin: 0 0 10px 0; color: #d97706;">Final Preparations</h3>
+            <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+              <li>Confirm all handoffs are complete</li>
+              <li>Verify coverage team is prepared</li>
+              <li>Ensure critical contacts are updated</li>
+            </ul>
+          </div>
+          `}
+
+          <p style="margin-top: 30px;">Best regards,<br><strong>Roof ER HR Team</strong></p>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">This is an automated message from Roof ER Command Center.</p>
+          <p style="margin: 10px 0 0 0;">© ${new Date().getFullYear()} Roof ER. All rights reserved.</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = `
+🗓️ PTO ${noticeType} - Employee Time Off Notification
+
+This is a ${noticeType.toLowerCase()} that ${employee.firstName} ${employee.lastName}${employee.position ? ` (${employee.position})` : ''} has approved time off starting in ${daysUntil} day${daysUntil !== 1 ? 's' : ''}.
+
+EMPLOYEE & TIME OFF DETAILS:
+Employee: ${employee.firstName} ${employee.lastName}
+${employee.position ? `Position: ${employee.position}` : ''}
+${employee.department ? `Department: ${employee.department}` : ''}
+Type: ${request.type}
+Start Date: ${new Date(request.startDate).toLocaleDateString()}
+End Date: ${new Date(request.endDate).toLocaleDateString()}
+Duration: ${request.days} day${request.days > 1 ? 's' : ''}
+Reason: ${request.reason}
+
+${daysUntil === 30 ? `COVERAGE PLANNING SUGGESTIONS:
+- Review team capacity and workload distribution
+- Identify backup personnel for critical responsibilities
+- Schedule knowledge transfer sessions if needed
+- Update project timelines to account for absence
+- Brief team members on coverage expectations` : daysUntil === 7 ? `WEEK-BEFORE CHECKLIST:
+- Confirm coverage assignments are in place
+- Ensure handoff documentation is complete
+- Brief team on any special procedures
+- Review emergency contact protocols` : `FINAL PREPARATIONS:
+- Confirm all handoffs are complete
+- Verify coverage team is prepared
+- Ensure critical contacts are updated`}
 
 Best regards,
 Roof ER HR Team
