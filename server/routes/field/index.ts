@@ -1500,8 +1500,13 @@ router.post("/documents/upload", uploadDisk.single('document'), async (req: Requ
   }
 });
 
-// List documents
+// List documents (supports both /documents and /documents/list)
 router.get("/documents/list", async (req: Request, res: Response) => {
+  // Redirect to main handler
+  return res.redirect(307, `/api/field/documents?${new URLSearchParams(req.query as any).toString()}`);
+});
+
+router.get("/documents", async (req: Request, res: Response) => {
   try {
     const userId = (req as any).session?.userId;
     const { category, search, limit = 20, offset = 0 } = req.query;
