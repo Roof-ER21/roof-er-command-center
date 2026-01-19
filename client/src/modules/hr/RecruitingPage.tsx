@@ -681,7 +681,7 @@ export function RecruitingPage() {
                   Add Candidate
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingCandidate ? "Edit Candidate" : "Add Candidate"}</DialogTitle>
                 </DialogHeader>
@@ -1284,7 +1284,7 @@ export function RecruitingPage() {
               )}
 
               <Dialog open={isCompareOpen} onOpenChange={setIsCompareOpen}>
-                <DialogContent className="max-w-5xl">
+                <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Compare Candidates</DialogTitle>
                   </DialogHeader>
@@ -1387,7 +1387,7 @@ export function RecruitingPage() {
                     Schedule Interview
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-h-[85vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>{editingInterview ? "Edit Interview" : "Schedule Interview"}</DialogTitle>
                   </DialogHeader>
