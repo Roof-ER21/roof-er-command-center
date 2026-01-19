@@ -241,9 +241,7 @@ export function AppShell() {
               <Bell className="h-4 w-4" />
             </Button>
           </div>
-          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-xs">RE</span>
-          </div>
+          <img src="/logo.png" alt="Roof ER" className="w-8 h-8 rounded-lg object-contain" />
         </div>
         {/* Mobile breadcrumb */}
         <div className="px-3 pb-2">
@@ -271,9 +269,7 @@ export function AppShell() {
         {/* Logo */}
         <div className="flex items-center h-16 px-4 border-b">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-primary-foreground font-bold text-sm">RE</span>
-            </div>
+            <img src="/logo.png" alt="Roof ER" className="w-8 h-8 rounded-lg object-contain flex-shrink-0" />
             {sidebarOpen && (
               <div className="flex flex-col">
                 <span className="font-semibold text-sm">Roof ER</span>
