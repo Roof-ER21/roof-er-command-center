@@ -254,10 +254,17 @@ class PtoCalendarService {
       console.log('🔄 Starting PTO calendar sync...');
 
       // Find all approved PTO requests without calendar event IDs
+      // Select only needed columns to avoid issues with missing columns in production
       const pendingSyncRequests = await db
         .select({
           pto: ptoRequests,
-          employee: users,
+          employee: {
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            email: users.email,
+            department: users.department,
+          },
         })
         .from(ptoRequests)
         .innerJoin(users, eq(ptoRequests.employeeId, users.id))

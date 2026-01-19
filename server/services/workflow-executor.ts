@@ -599,15 +599,25 @@ export class WorkflowExecutor {
 
     try {
       // Find step executions that are scheduled and due
-      const dueSteps = await db
-        .select()
-        .from(workflowStepExecutions)
-        .where(
-          and(
-            eq(workflowStepExecutions.status, 'PENDING'),
-            lte(workflowStepExecutions.scheduledFor, new Date())
-          )
-        );
+      let dueSteps;
+      try {
+        dueSteps = await db
+          .select()
+          .from(workflowStepExecutions)
+          .where(
+            and(
+              eq(workflowStepExecutions.status, 'PENDING'),
+              lte(workflowStepExecutions.scheduledFor, new Date())
+            )
+          );
+      } catch (error: any) {
+        // Handle missing table gracefully (table may not exist in production yet)
+        if (error.code === '42P01') {
+          console.log('[WorkflowExecutor] Workflow tables not yet created - skipping delayed step processing');
+          return;
+        }
+        throw error;
+      }
 
       console.log(`[WorkflowExecutor] Found ${dueSteps.length} delayed steps to process`);
 
