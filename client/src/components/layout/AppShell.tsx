@@ -228,7 +228,7 @@ export function AppShell() {
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
-            <img src="/logo.png" alt="Roof ER" className="w-8 h-8 rounded-lg object-contain" />
+            <img src="/logo.png" alt="Roof ER" className="w-8 h-8 object-contain" />
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -271,7 +271,7 @@ export function AppShell() {
         {/* Logo */}
         <div className="flex items-center h-16 px-4 border-b">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Roof ER" className="w-8 h-8 rounded-lg object-contain flex-shrink-0" />
+            <img src="/logo.png" alt="Roof ER" className="w-8 h-8 object-contain flex-shrink-0" />
             {sidebarOpen && (
               <div className="flex flex-col">
                 <span className="font-semibold text-sm">Roof ER</span>

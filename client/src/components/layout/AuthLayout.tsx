@@ -6,8 +6,8 @@ export function AuthLayout() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600" />
       </div>
     );
   }
@@ -17,59 +17,79 @@ export function AuthLayout() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-red-50 via-background to-gray-50 dark:from-red-950/20 dark:via-background dark:to-gray-950/20">
+    <div className="min-h-screen flex bg-[#0a0a0a]">
       {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-red-700 to-red-900 p-12 flex-col justify-between text-white">
-        <div>
-          <div className="flex items-center gap-6">
-            <img src="/logo.png" alt="Roof ER Command Center" className="w-28 h-28 rounded-2xl object-contain" />
-            <div>
-              <h1 className="text-4xl font-bold"><span className="text-black">Roof</span> ER</h1>
-              <p className="text-lg opacity-80">Command Center</p>
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+        <div className="absolute inset-0 bg-gradient-to-t from-red-950/30 via-transparent to-transparent" />
+
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 opacity-5" style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px),
+                           linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
+          backgroundSize: '50px 50px'
+        }} />
+
+        {/* Content */}
+        <div className="relative z-10 p-12 flex flex-col justify-between text-white w-full">
+          <div>
+            <div className="flex items-center gap-6">
+              <img
+                src="/logo.png"
+                alt="Roof ER Command Center"
+                className="w-32 h-32 object-contain drop-shadow-2xl"
+              />
             </div>
           </div>
-        </div>
 
-        <div className="space-y-6">
-          <h2 className="text-4xl font-bold leading-tight">
-            One Platform.<br />
-            All Your Operations.
-          </h2>
-          <p className="text-lg opacity-90">
-            HR, Sales, Training, and Field Operations unified in a single powerful platform.
-          </p>
+          <div className="space-y-6">
+            <h2 className="text-4xl font-bold leading-tight">
+              <span className="text-slate-300">One Platform.</span><br />
+              <span className="bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent">
+                All Your Operations.
+              </span>
+            </h2>
+            <p className="text-lg text-slate-400">
+              HR, Sales, Training, and Field Operations unified in a single powerful platform.
+            </p>
 
-          <div className="grid grid-cols-2 gap-4 pt-8">
-            <div className="bg-white/10 rounded-lg p-4">
-              <h3 className="font-semibold mb-1">HR Management</h3>
-              <p className="text-sm opacity-80">PTO, recruiting, onboarding</p>
-            </div>
-            <div className="bg-white/10 rounded-lg p-4">
-              <h3 className="font-semibold mb-1">Sales Leaderboard</h3>
-              <p className="text-sm opacity-80">Rankings, contests, bonuses</p>
-            </div>
-            <div className="bg-white/10 rounded-lg p-4">
-              <h3 className="font-semibold mb-1">Training Center</h3>
-              <p className="text-sm opacity-80">AI roleplay, curriculum</p>
-            </div>
-            <div className="bg-white/10 rounded-lg p-4">
-              <h3 className="font-semibold mb-1">Field Assistant</h3>
-              <p className="text-sm opacity-80">Susan AI, documents</p>
+            <div className="grid grid-cols-2 gap-4 pt-8">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm hover:bg-white/10 transition-colors">
+                <h3 className="font-semibold mb-1 text-slate-200">HR Management</h3>
+                <p className="text-sm text-slate-400">PTO, recruiting, onboarding</p>
+              </div>
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm hover:bg-white/10 transition-colors">
+                <h3 className="font-semibold mb-1 text-slate-200">Sales Leaderboard</h3>
+                <p className="text-sm text-slate-400">Rankings, contests, bonuses</p>
+              </div>
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm hover:bg-white/10 transition-colors">
+                <h3 className="font-semibold mb-1 text-slate-200">Training Center</h3>
+                <p className="text-sm text-slate-400">AI roleplay, curriculum</p>
+              </div>
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm hover:bg-white/10 transition-colors">
+                <h3 className="font-semibold mb-1 text-slate-200">Field Assistant</h3>
+                <p className="text-sm text-slate-400">Susan AI, documents</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="text-sm opacity-60">
-          &copy; {new Date().getFullYear()} Roof ER. All rights reserved.
+          <div className="text-sm text-slate-500">
+            &copy; {new Date().getFullYear()} Roof ER - The Roof Docs. All rights reserved.
+          </div>
         </div>
       </div>
 
       {/* Right side - Auth form */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8 pt-16">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-gradient-to-br from-slate-950 via-[#0a0a0a] to-slate-950">
         <div className="w-full max-w-md">
           {/* Logo above login card */}
           <div className="flex justify-center mb-8">
-            <img src="/logo.png" alt="Roof ER Command Center" className="w-40 h-40 object-contain" />
+            <img
+              src="/logo.png"
+              alt="Roof ER Command Center"
+              className="w-44 h-44 object-contain drop-shadow-2xl"
+            />
           </div>
           <Outlet />
         </div>

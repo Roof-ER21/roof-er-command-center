@@ -213,7 +213,7 @@ export function TVDisplayPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8 md:mb-12">
           <div className="flex items-center gap-6">
-            <img src="/logo.png" alt="Roof ER" className="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-contain shadow-2xl shadow-primary/50" />
+            <img src="/logo.png" alt="Roof ER" className="w-24 h-24 md:w-28 md:h-28 object-contain drop-shadow-2xl" />
             <div>
               <h1 className="text-5xl md:text-7xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-300">
                 Roof ER Command Center

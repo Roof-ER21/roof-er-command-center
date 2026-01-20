@@ -42,10 +42,10 @@ export function PinLoginPage() {
   const digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", ""];
 
   return (
-    <Card>
+    <Card className="bg-slate-900/50 border-slate-800 backdrop-blur-sm">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Enter Your PIN</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-2xl text-white">Enter Your PIN</CardTitle>
+        <CardDescription className="text-slate-400">
           Enter your 4-digit PIN to access training
         </CardDescription>
       </CardHeader>
@@ -65,8 +65,8 @@ export function PinLoginPage() {
               className={cn(
                 "w-14 h-14 rounded-lg border-2 flex items-center justify-center text-2xl font-bold transition-all",
                 pin.length > i
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border"
+                  ? "border-red-600 bg-red-600/20 text-red-500"
+                  : "border-slate-700 bg-slate-800/50"
               )}
             >
               {pin.length > i ? "•" : ""}
@@ -115,7 +115,7 @@ export function PinLoginPage() {
               <Button
                 key={i}
                 variant="outline"
-                className="h-14 text-xl font-semibold"
+                className="h-14 text-xl font-semibold bg-slate-800/50 border-slate-700 text-white hover:bg-slate-700 hover:border-slate-600"
                 onClick={() => handlePinInput(digit)}
                 disabled={isPinLoginPending || pin.length >= 4}
               >
@@ -129,7 +129,7 @@ export function PinLoginPage() {
       <CardFooter>
         <Link
           to="/login"
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mx-auto"
+          className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mx-auto"
         >
           <ArrowLeft className="h-4 w-4" />
           Sign in with email instead

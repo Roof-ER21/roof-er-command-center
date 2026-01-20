@@ -23,10 +23,10 @@ export function LoginPage() {
   };
 
   return (
-    <Card>
+    <Card className="bg-slate-900/50 border-slate-800 backdrop-blur-sm">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Welcome back</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-2xl text-white">Welcome back</CardTitle>
+        <CardDescription className="text-slate-400">
           Enter your credentials to access your account
         </CardDescription>
       </CardHeader>
@@ -92,9 +92,9 @@ export function LoginPage() {
             )}
           </Button>
 
-          <div className="text-sm text-center text-muted-foreground">
+          <div className="text-sm text-center text-slate-400">
             Training user?{" "}
-            <Link to="/pin-login" className="text-primary hover:underline">
+            <Link to="/pin-login" className="text-red-500 hover:text-red-400 hover:underline">
               Sign in with PIN
             </Link>
           </div>
