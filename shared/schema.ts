@@ -174,11 +174,34 @@ export const candidates = pgTable('candidates', {
   phone: text('phone'),
   position: text('position').notNull(),
   jobPostingId: integer('job_posting_id').references(() => jobPostings.id),
-  status: text('status').$type<'new' | 'screening' | 'interview' | 'offer' | 'hired' | 'rejected'>().notNull().default('new'),
+  status: text('status')
+    .$type<
+      | 'new'
+      | 'screening'
+      | 'interview'
+      | 'offer'
+      | 'hired'
+      | 'rejected'
+      | 'WITHDRAWN'
+      | 'DEAD_BY_US'
+      | 'DEAD_BY_CANDIDATE'
+      | 'DEAD_BY_COMPANY'
+      | 'DEAD_COMPENSATION'
+      | 'DEAD_LOCATION'
+      | 'DEAD_TIMING'
+      | 'DEAD_QUALIFICATIONS'
+      | 'DEAD_CULTURE_FIT'
+      | 'DEAD_OTHER'
+      | 'NO_SHOW'
+      | 'no_show'
+    >()
+    .notNull()
+    .default('new'),
   resumeUrl: text('resume_url'),
   source: text('source'),
   rating: integer('rating'),
   notes: text('notes'),
+  customTags: text('custom_tags').array(),
   assignedTo: integer('assigned_to').references(() => users.id),
   referralName: text('referral_name'),
   isArchived: boolean('is_archived').notNull().default(false),
@@ -192,7 +215,10 @@ export const candidateNotes = pgTable('candidate_notes', {
   candidateId: integer('candidate_id').notNull().references(() => candidates.id),
   authorId: integer('author_id').notNull().references(() => users.id),
   content: text('content').notNull(),
-  type: text('type').$type<'GENERAL' | 'INTERVIEW' | 'REFERENCE' | 'INTERNAL'>().notNull().default('GENERAL'),
+  type: text('type')
+    .$type<'GENERAL' | 'INTERVIEW' | 'REFERENCE' | 'INTERNAL' | 'SYSTEM'>()
+    .notNull()
+    .default('GENERAL'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -1471,6 +1497,10 @@ export const notifications = pgTable('notifications', {
     | 'streak_reminder'
     | 'training_complete'
     | 'team_update'
+    | 'pto_request'
+    | 'pto_reminder'
+    | 'task_overdue'
+    | 'onboarding_assigned'
   >().notNull(),
   title: text('title').notNull(),
   message: text('message').notNull(),
@@ -1544,6 +1574,9 @@ export const emailNotifications = pgTable('email_notifications', {
     | 'pto_approved'
     | 'pto_denied'
     | 'pto_reminder'
+    | 'rejection'
+    | 'withdrawal'
+    | 'no_show'
   >().notNull(),
   status: text('status').$type<'pending' | 'sent' | 'failed' | 'bounced'>().default('pending').notNull(),
   sentAt: timestamp('sent_at'),

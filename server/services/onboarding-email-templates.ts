@@ -9,10 +9,19 @@
  */
 export function onboardingTaskOverdueTemplate(
   employee: { firstName: string; lastName: string; email: string },
-  task: { taskName: string; dueDate: string; description?: string | null },
+  task: { taskName: string; dueDate: string | null; description?: string | null },
   daysOverdue: number
 ): { subject: string; html: string; text: string } {
   const subject = `⚠️ Overdue Onboarding Task: ${task.taskName}`;
+  const dueDateFormatOptions: Intl.DateTimeFormatOptions = {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  };
+  const dueDateLabel = task.dueDate
+    ? new Date(task.dueDate).toLocaleDateString('en-US', dueDateFormatOptions)
+    : 'TBD';
 
   const html = `
     <!DOCTYPE html>
@@ -38,12 +47,7 @@ export function onboardingTaskOverdueTemplate(
             <h3 style="margin: 0 0 10px 0; color: #dc2626;">Task Details</h3>
             <p style="margin: 5px 0;"><strong>Task:</strong> ${task.taskName}</p>
             ${task.description ? `<p style="margin: 5px 0;"><strong>Description:</strong> ${task.description}</p>` : ''}
-            <p style="margin: 5px 0;"><strong>Due Date:</strong> ${new Date(task.dueDate).toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}</p>
+            <p style="margin: 5px 0;"><strong>Due Date:</strong> ${dueDateLabel}</p>
             <p style="margin: 5px 0; font-weight: bold; color: #dc2626;">
               <strong>Days Overdue:</strong> ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}
             </p>
@@ -86,12 +90,7 @@ You have an overdue onboarding task that requires immediate attention.
 TASK DETAILS:
 Task: ${task.taskName}
 ${task.description ? `Description: ${task.description}` : ''}
-Due Date: ${new Date(task.dueDate).toLocaleDateString('en-US', {
-  weekday: 'long',
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric'
-})}
+Due Date: ${dueDateLabel}
 Days Overdue: ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}
 
 ⏰ TIME SENSITIVE

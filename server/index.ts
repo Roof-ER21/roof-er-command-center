@@ -48,6 +48,7 @@ import { startPtoCalendarSync } from "./cron/pto-calendar-sync.js";
 
 // Import PTO reminder scheduler
 import { schedulePtoReminderJob } from "./cron/pto-reminder-job.js";
+import { scheduleInterviewOverdueJob } from "./cron/interview-overdue-job.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -219,6 +220,9 @@ httpServer.listen(PORT, () => {
 
   // Start PTO reminder scheduler
   schedulePtoReminderJob();
+
+  // Start interview overdue scheduler
+  scheduleInterviewOverdueJob();
 
   console.log(`
 🚀 Roof ER Command Center Server

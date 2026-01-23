@@ -151,7 +151,7 @@ export async function sendPtoReminders(): Promise<{
   ]) {
     try {
       // Find all approved PTO requests starting on target date
-      const ptoRequests = await db
+      const requestsWithEmployees = await db
         .select({
           request: ptoRequests,
           employee: users,
@@ -165,9 +165,9 @@ export async function sendPtoReminders(): Promise<{
           )
         ) as PtoRequestWithEmployee[];
 
-      console.log(`📊 Found ${ptoRequests.length} PTO request(s) starting in ${daysUntil} day(s)`);
+      console.log(`📊 Found ${requestsWithEmployees.length} PTO request(s) starting in ${daysUntil} day(s)`);
 
-      for (const { request, employee } of ptoRequests) {
+      for (const { request, employee } of requestsWithEmployees) {
         try {
           // Send email to employee
           await sendPTOReminder(

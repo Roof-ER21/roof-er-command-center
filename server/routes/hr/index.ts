@@ -163,7 +163,12 @@ const getNextRunAt = (schedule: string) => {
 
 // Apply auth and module access middleware to all HR routes
 router.use(requireAuth);
-router.use(requireModuleAccess('hr'));
+router.use((req, res, next) => {
+  if (req.path === "/attendance/check-in") {
+    return next();
+  }
+  return requireModuleAccess('hr')(req, res, next);
+});
 
 // Get HR dashboard metrics
 router.get("/dashboard/metrics", async (req: Request, res: Response) => {
@@ -4627,14 +4632,22 @@ router.post("/candidates/auto-archive", async (req: Request, res: Response) => {
       'DEAD_QUALIFICATIONS',
       'DEAD_CULTURE_FIT',
       'DEAD_OTHER'
-    ];
+    ] as const;
+    const statusCondition = sql`${candidates.status} IN (${sql.join(
+      terminalStates.map((state) => sql`${state}`),
+      sql`, `
+    )})`;
 
-    const candidatesToArchive = await db.select().from(candidates)
-      .where(and(
-        eq(candidates.isArchived, false),
-        inArray(candidates.status, terminalStates),
-        lte(candidates.updatedAt, thirtyDaysAgo)
-      ));
+    const candidatesToArchive = await db
+      .select()
+      .from(candidates)
+      .where(
+        and(
+          eq(candidates.isArchived, false),
+          statusCondition,
+          lte(candidates.updatedAt, thirtyDaysAgo)
+        )
+      );
 
     console.log(`📦 Found ${candidatesToArchive.length} candidates to auto-archive`);
 

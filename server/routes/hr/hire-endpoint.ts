@@ -78,7 +78,7 @@ router.post('/candidates/:id/hire', async (req: Request, res: Response) => {
     }
 
     // Check if already hired
-    if (candidate.status === 'hired' || candidate.status === 'HIRED') {
+    if (candidate.status === 'hired') {
       return res.status(400).json({
         error: 'Candidate already hired',
         userId: null, // Could query users table to find existing user

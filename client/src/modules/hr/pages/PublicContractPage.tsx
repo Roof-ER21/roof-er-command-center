@@ -25,9 +25,9 @@ export function PublicContractPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const { data, isLoading, error } = useQuery<PublicContract>({
-    queryKey: ["/api/hr/public/contracts", token],
+    queryKey: ["/api/public/contracts", token],
     queryFn: async () => {
-      const response = await fetch(`/api/hr/public/contracts/${token}`);
+      const response = await fetch(`/api/public/contracts/${token}`);
       if (!response.ok) {
         const errorBody = await response.json();
         throw new Error(errorBody?.error || "Failed to load contract");
@@ -40,7 +40,7 @@ export function PublicContractPage() {
 
   const signMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`/api/hr/public/contracts/${token}/sign`, {
+      const response = await fetch(`/api/public/contracts/${token}/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

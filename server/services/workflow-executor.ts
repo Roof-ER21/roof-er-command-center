@@ -225,20 +225,19 @@ export class WorkflowExecutor {
           context.candidate = candidate;
         }
 
-        if (emailType === 'status_change' && context.candidate) {
-          await sendCandidateStatusEmail(
-            context.candidate.email,
-            context.candidate.firstName,
-            context.newStage || context.candidate.status
-          );
-        } else if (emailType === 'offer' && context.candidate) {
-          await sendOfferEmail(
-            context.candidate.email,
-            context.candidate.firstName,
-            config.position || context.candidate.position,
-            config.salary || 'competitive',
-            config.startDate || 'TBD'
-          );
+        if (context.candidate) {
+          const newStatus = context.newStage || context.candidate.status;
+          const oldStatus = context.oldStage || context.candidate.status;
+
+          if (emailType === 'status_change') {
+            await sendCandidateStatusEmail(context.candidate, newStatus, oldStatus);
+          } else if (emailType === 'offer') {
+            await sendOfferEmail(context.candidate, {
+              position: config.position || context.candidate.position || 'Team Member',
+              salary: config.salary || 'competitive',
+              startDate: config.startDate,
+            });
+          }
         }
 
         return { success: true, shouldContinue: true, data: { emailSent: true } };
@@ -289,9 +288,8 @@ export class WorkflowExecutor {
           title,
           description,
           assignedTo: assignedTo || context.userId,
-          candidateId: context.candidateId,
           dueDate,
-          status: 'TODO',
+          status: 'open',
         });
 
         return { success: true, shouldContinue: true, data: { taskCreated: true } };

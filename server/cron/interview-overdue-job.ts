@@ -1,3 +1,4 @@
+import cron from 'node-cron';
 import { db } from '../db.js';
 import {
   interviews,
@@ -97,7 +98,7 @@ async function processOverdueInterview(data: OverdueInterview): Promise<void> {
 
   if (daysSince >= 7) {
     // 7+ days: Auto NO_SHOW
-    await handleAutoNoShow(interview, candidate);
+    await handleAutoNoShow(interview, candidate, daysSince);
   } else if (daysSince >= 3) {
     // 3+ days: Escalation to HR
     await sendEscalationEmail(interview, candidate, interviewer);
@@ -110,7 +111,7 @@ async function processOverdueInterview(data: OverdueInterview): Promise<void> {
 /**
  * Auto mark as NO_SHOW and move to DEAD (7+ days overdue)
  */
-async function handleAutoNoShow(interview: any, candidate: any): Promise<void> {
+async function handleAutoNoShow(interview: any, candidate: any, daysSince: number): Promise<void> {
   console.log(`🚨 Auto NO_SHOW: Interview #${interview.id} (7+ days overdue)`);
 
   try {
@@ -149,6 +150,8 @@ async function handleAutoNoShow(interview: any, candidate: any): Promise<void> {
     });
 
     console.log(`✅ Interview #${interview.id} marked as NO_SHOW, candidate moved to DEAD`);
+
+    await sendAutoNoShowNotification(interview, candidate, daysSince);
 
   } catch (error) {
     console.error(`❌ Failed to process auto NO_SHOW for interview #${interview.id}:`, error);
@@ -212,12 +215,41 @@ async function sendEscalationEmail(
     </html>
   `;
 
-  // Send to all HR admins
+  const text = [
+    `Overdue Interview Alert (${daysSince} days)`,
+    ``,
+    `Candidate: ${candidate.firstName} ${candidate.lastName}`,
+    `Position: ${candidate.position || 'Not specified'}`,
+    `Scheduled: ${new Date(interview.scheduledAt).toLocaleString()}`,
+    `Interviewer: ${interviewer ? `${interviewer.firstName} ${interviewer.lastName}` : 'Not assigned'}`,
+    `Type: ${interview.type || 'Not specified'}`,
+    ``,
+    `Action Required:`,
+    `- Follow up with interviewer for feedback`,
+    `- Update interview status in the system`,
+    `- Auto NO_SHOW in ${Math.max(0, 7 - daysSince)} days`,
+  ].join('\n');
+
   for (const admin of hrAdmins) {
     try {
-      // Note: Using console.log since we need to implement the actual email sending
-      console.log(`📧 Escalation email would be sent to: ${admin.email}`);
-      console.log(`   Subject: ${subject}`);
+      const result = await sendEmail(
+        admin.email,
+        `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || admin.email,
+        subject,
+        html,
+        text,
+        'interview_reminder',
+        {
+          candidateId: candidate.id,
+          interviewId: interview.id,
+          daysSince,
+          reminderType: 'escalation',
+        }
+      );
+
+      if (!result.success) {
+        console.error(`Failed to send escalation email to ${admin.email}:`, result.error);
+      }
     } catch (error) {
       console.error(`Failed to send escalation email to ${admin.email}:`, error);
     }
@@ -272,11 +304,103 @@ async function sendFeedbackReminder(
   `;
 
   try {
-    console.log(`📧 Feedback reminder would be sent to: ${interviewer.email}`);
-    console.log(`   Subject: ${subject}`);
-    // TODO: Implement actual email sending
+    const text = [
+      `Interview Feedback Reminder`,
+      ``,
+      `Candidate: ${candidate.firstName} ${candidate.lastName}`,
+      `Position: ${candidate.position || 'Not specified'}`,
+      `Interview Date: ${new Date(interview.scheduledAt).toLocaleString()}`,
+      `Type: ${interview.type || 'Video'}`,
+      ``,
+      `Please log into the HR Command Center to submit your feedback.`,
+    ].join('\n');
+
+    const result = await sendEmail(
+      interviewer.email,
+      `${interviewer.firstName || ''} ${interviewer.lastName || ''}`.trim() || interviewer.email,
+      subject,
+      html,
+      text,
+      'interview_reminder',
+      {
+        candidateId: candidate.id,
+        interviewId: interview.id,
+        daysSince: Math.floor(
+          (new Date().getTime() - new Date(interview.scheduledAt).getTime()) / (1000 * 60 * 60 * 24)
+        ),
+        reminderType: 'feedback',
+      }
+    );
+
+    if (!result.success) {
+      console.error(`Failed to send feedback reminder to ${interviewer.email}:`, result.error);
+    }
   } catch (error) {
     console.error(`Failed to send feedback reminder to ${interviewer.email}:`, error);
+  }
+}
+
+async function sendAutoNoShowNotification(interview: any, candidate: any, daysSince: number): Promise<void> {
+  const hrAdmins = await db.select(selectUserColumns()).from(users)
+    .where(eq(users.hasHRAccess, true));
+
+  if (hrAdmins.length === 0) {
+    console.warn('⚠️  No HR admins found for auto no-show notification');
+    return;
+  }
+
+  const subject = `Interview Auto-Closed: ${candidate.firstName} ${candidate.lastName} (${daysSince} days overdue)`;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <h2 style="color: #dc2626;">Interview Automatically Closed</h2>
+        <p>The interview below was automatically marked as <strong>NO_SHOW</strong> after ${daysSince} days overdue.</p>
+        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 5px 0;"><strong>Candidate:</strong> ${candidate.firstName} ${candidate.lastName}</p>
+          <p style="margin: 5px 0;"><strong>Position:</strong> ${candidate.position || 'Not specified'}</p>
+          <p style="margin: 5px 0;"><strong>Scheduled:</strong> ${new Date(interview.scheduledAt).toLocaleString()}</p>
+          <p style="margin: 5px 0;"><strong>Interview Type:</strong> ${interview.type || 'Not specified'}</p>
+        </div>
+        <p>Candidate status has been updated to DEAD. Please review if any corrections are needed.</p>
+      </body>
+    </html>
+  `;
+
+  const text = [
+    `Interview Auto-Closed`,
+    ``,
+    `Candidate: ${candidate.firstName} ${candidate.lastName}`,
+    `Position: ${candidate.position || 'Not specified'}`,
+    `Scheduled: ${new Date(interview.scheduledAt).toLocaleString()}`,
+    `Interview Type: ${interview.type || 'Not specified'}`,
+    ``,
+    `Candidate status updated to DEAD.`,
+  ].join('\n');
+
+  for (const admin of hrAdmins) {
+    try {
+      const result = await sendEmail(
+        admin.email,
+        `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || admin.email,
+        subject,
+        html,
+        text,
+        'no_show',
+        {
+          candidateId: candidate.id,
+          interviewId: interview.id,
+          daysSince,
+          reminderType: 'auto_no_show',
+        }
+      );
+
+      if (!result.success) {
+        console.error(`Failed to send auto no-show email to ${admin.email}:`, result.error);
+      }
+    } catch (error) {
+      console.error(`Failed to send auto no-show email to ${admin.email}:`, error);
+    }
   }
 }
 
@@ -285,17 +409,16 @@ async function sendFeedbackReminder(
  * Add to your cron scheduler (e.g., node-cron, Bull, etc.)
  */
 export function scheduleInterviewOverdueJob() {
-  // Example with node-cron (install with: npm install node-cron @types/node-cron)
-  // const cron = require('node-cron');
-  //
-  // cron.schedule('0 10 * * *', () => {
-  //   console.log('🕐 Running interview overdue job...');
-  //   checkOverdueInterviews().catch(console.error);
-  // });
+  cron.schedule('0 10 * * *', async () => {
+    console.log('🕐 Running interview overdue job...');
+    try {
+      await checkOverdueInterviews();
+    } catch (error) {
+      console.error('❌ Interview overdue job failed:', error);
+    }
+  });
 
-  console.log('📅 Interview overdue job scheduler not yet implemented');
-  console.log('   Add to your cron system to run daily at 10:00 AM');
-  console.log('   Cron expression: 0 10 * * *');
+  console.log('⏰ Scheduled interview overdue job (daily at 10:00 AM)');
 }
 
 export default {

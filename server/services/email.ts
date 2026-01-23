@@ -57,7 +57,7 @@ interface OfferDetails {
 /**
  * Base function to send email and log to database
  */
-async function sendEmail(
+export async function sendEmail(
   recipientEmail: string,
   recipientName: string | null,
   subject: string,
@@ -465,7 +465,7 @@ This is an automated message from Roof ER Command Center.
  */
 export async function sendPTORequestNotification(
   employee: { firstName: string; lastName: string; email: string; position?: string | null },
-  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason: string; isExempt?: boolean | null; createdByAdmin?: number | null },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason?: string; isExempt?: boolean | null; createdByAdmin?: number | null },
   manager: { firstName: string; lastName: string; email: string }
 ): Promise<{ success: boolean; error?: string }> {
   const { subject, html, text } = ptoRequestSubmittedTemplate(employee, request, manager);
@@ -496,7 +496,7 @@ export async function sendPTORequestNotification(
  */
 export async function sendPTORequestNotificationToApprovers(
   employee: { firstName: string; lastName: string; email: string; position?: string | null },
-  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason: string; isExempt?: boolean | null; createdByAdmin?: number | null },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason?: string; isExempt?: boolean | null; createdByAdmin?: number | null },
   approvers: Array<{ firstName: string; lastName: string; email: string }>
 ): Promise<void> {
   const notificationPromises = approvers.map(approver =>
@@ -687,7 +687,7 @@ export async function sendNoShowEmail(
  */
 export async function sendOnboardingTaskOverdueEmail(
   employee: { firstName: string; lastName: string; email: string },
-  task: { taskName: string; dueDate: string; description?: string | null },
+  task: OnboardingTask,
   daysOverdue: number
 ): Promise<{ success: boolean; error?: string }> {
   const { subject, html, text } = onboardingTaskOverdueTemplate(employee, task, daysOverdue);

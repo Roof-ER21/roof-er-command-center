@@ -25,11 +25,12 @@ import { InventoryPage } from "@/modules/hr/pages/InventoryPage";
 import { OnboardingPage } from "@/modules/hr/pages/OnboardingPage";
 import { EmployeeDetailPage } from "@/modules/hr/pages/EmployeeDetailPage";
 import { DocumentsPage } from "@/modules/hr/pages/DocumentsPage";
+import { EmailTemplatesPage } from "@/modules/hr/pages/EmailTemplatesPage";
 import { ReviewsPage } from "@/modules/hr/pages/ReviewsPage";
 import { TeamDirectoryPage } from "@/modules/hr/pages/TeamDirectoryPage";
 import { OrgChartPage } from "@/modules/hr/pages/OrgChartPage";
 import { AttendancePage } from "@/modules/hr/pages/AttendancePage";
-import { MeetingRoomsPage } from "@/modules/hr/pages/MeetingRoomsPage";
+import { AttendanceCheckInPage } from "@/modules/hr/pages/AttendanceCheckInPage";
 import { TerritoriesPage } from "@/modules/hr/pages/TerritoriesPage";
 import { EmployeeAssignmentsPage } from "@/modules/hr/pages/EmployeeAssignmentsPage";
 import { WorkflowBuilderPage } from "@/modules/hr/pages/WorkflowBuilderPage";
@@ -42,16 +43,20 @@ import { EquipmentChecklistFormPage } from "@/modules/hr/pages/EquipmentChecklis
 import { EquipmentReturnFormPage } from "@/modules/hr/pages/EquipmentReturnFormPage";
 import { SignEquipmentReceiptPage } from "@/modules/hr/pages/SignEquipmentReceiptPage";
 import { TasksPage } from "@/modules/hr/pages/TasksPage";
-import { MyCalendarPage } from "@/modules/hr/pages/MyCalendarPage";
 import { WorkplacePage } from "@/modules/hr/pages/WorkplacePage";
 import { ScheduledReportsPage } from "@/modules/hr/pages/ScheduledReportsPage";
-import { QrCodesPage } from "@/modules/hr/pages/QrCodesPage";
 import { AdminControlHubPage } from "@/modules/hr/pages/AdminControlHubPage";
 import { GoogleIntegrationPage } from "@/modules/hr/pages/GoogleIntegrationPage";
 import { TeamDashboardPage } from "@/modules/hr/pages/TeamDashboardPage";
 import { EnterpriseAnalyticsPage } from "@/modules/hr/pages/EnterpriseAnalyticsPage";
 import { SafetyDashboardPage } from "@/modules/hr/pages/SafetyDashboardPage";
 import { RoadmapPage } from "@/modules/hr/pages/RoadmapPage";
+import { CoiDocumentsPage } from "@/modules/hr/pages/CoiDocumentsPage";
+import { OnboardingTemplatesPage } from "@/modules/hr/pages/OnboardingTemplatesPage";
+import { RecruitingAnalyticsPage } from "@/modules/hr/pages/RecruitingAnalyticsPage";
+import { PtoPoliciesPage } from "@/modules/hr/pages/PtoPoliciesPage";
+import { AICriteriaConfigPage } from "@/modules/hr/pages/AICriteriaConfigPage";
+import { JobPostingsPage } from "@/modules/hr/pages/JobPostingsPage";
 // Consolidated HR Hub Pages
 import { PeoplePage } from "@/modules/hr/pages/PeoplePage";
 import { TimePage } from "@/modules/hr/pages/TimePage";
@@ -171,16 +176,16 @@ export default function App() {
           <Route path="/hr/team-directory" element={<ProtectedRoute requiredModule="hr"><TeamDirectoryPage /></ProtectedRoute>} />
           <Route path="/hr/org-chart" element={<ProtectedRoute requiredModule="hr"><OrgChartPage /></ProtectedRoute>} />
           <Route path="/hr/attendance" element={<ProtectedRoute requiredModule="hr"><AttendancePage /></ProtectedRoute>} />
-          <Route path="/hr/meeting-rooms" element={<ProtectedRoute requiredModule="hr"><MeetingRoomsPage /></ProtectedRoute>} />
-          <Route path="/hr/pto-policies" element={<ProtectedRoute requiredModule="hr"><PTOPage /></ProtectedRoute>} />
+          <Route path="/hr/attendance/check-in" element={<AttendanceCheckInPage />} />
+          <Route path="/hr/pto-policies" element={<ProtectedRoute requiredModule="hr"><PtoPoliciesPage /></ProtectedRoute>} />
           <Route path="/hr/territories" element={<ProtectedRoute requiredModule="hr"><TerritoriesPage /></ProtectedRoute>} />
-          <Route path="/hr/onboarding-templates" element={<ProtectedRoute requiredModule="hr"><OnboardingPage /></ProtectedRoute>} />
-          <Route path="/hr/email-templates" element={<ProtectedRoute requiredModule="hr"><DocumentsPage /></ProtectedRoute>} />
-          <Route path="/hr/recruiting-analytics" element={<ProtectedRoute requiredModule="hr"><RecruitingPage /></ProtectedRoute>} />
+          <Route path="/hr/onboarding-templates" element={<ProtectedRoute requiredModule="hr"><OnboardingTemplatesPage /></ProtectedRoute>} />
+          <Route path="/hr/email-templates" element={<ProtectedRoute requiredModule="hr"><EmailTemplatesPage /></ProtectedRoute>} />
+          <Route path="/hr/recruiting-analytics" element={<ProtectedRoute requiredModule="hr"><RecruitingAnalyticsPage /></ProtectedRoute>} />
           <Route path="/hr/enterprise-analytics" element={<ProtectedRoute requiredModule="hr"><EnterpriseAnalyticsPage /></ProtectedRoute>} />
           <Route path="/hr/safety" element={<ProtectedRoute requiredModule="hr"><SafetyDashboardPage /></ProtectedRoute>} />
           <Route path="/hr/roadmap" element={<ProtectedRoute requiredModule="hr"><RoadmapPage /></ProtectedRoute>} />
-          <Route path="/hr/coi-documents" element={<ProtectedRoute requiredModule="hr"><DocumentsPage /></ProtectedRoute>} />
+          <Route path="/hr/coi-documents" element={<ProtectedRoute requiredModule="hr"><CoiDocumentsPage /></ProtectedRoute>} />
           <Route path="/hr/employee-assignments" element={<ProtectedRoute requiredModule="hr"><EmployeeAssignmentsPage /></ProtectedRoute>} />
           <Route path="/hr/workflows" element={<ProtectedRoute requiredModule="hr"><WorkflowBuilderPage /></ProtectedRoute>} />
           <Route path="/hr/tools" element={<ProtectedRoute requiredModule="hr"><ToolsPage /></ProtectedRoute>} />
@@ -192,12 +197,12 @@ export default function App() {
           <Route path="/hr/meeting-rooms" element={<Navigate to="/hr/workplace?tab=rooms" replace />} />
           <Route path="/hr/qr-codes" element={<Navigate to="/hr/workplace?tab=qr" replace />} />
           <Route path="/hr/scheduled-reports" element={<ProtectedRoute requiredModule="hr"><ScheduledReportsPage /></ProtectedRoute>} />
-          <Route path="/hr/attendance/check-in" element={<ProtectedRoute requiredModule="hr"><AttendancePage /></ProtectedRoute>} />
           <Route path="/hr/admin-hub" element={<ProtectedRoute requiredModule="hr"><AdminControlHubPage /></ProtectedRoute>} />
           <Route path="/hr/google-integration" element={<ProtectedRoute requiredModule="hr"><GoogleIntegrationPage /></ProtectedRoute>} />
           <Route path="/hr/team-dashboard" element={<ProtectedRoute requiredModule="hr"><TeamDashboardPage /></ProtectedRoute>} />
           <Route path="/hr/resume-uploader" element={<ProtectedRoute requiredModule="hr"><ResumeUploaderPage /></ProtectedRoute>} />
-          <Route path="/hr/ai-criteria" element={<ProtectedRoute requiredModule="hr"><RecruitingPage /></ProtectedRoute>} />
+          <Route path="/hr/ai-criteria" element={<ProtectedRoute requiredModule="hr"><AICriteriaConfigPage /></ProtectedRoute>} />
+          <Route path="/hr/job-postings" element={<ProtectedRoute requiredModule="hr"><JobPostingsPage /></ProtectedRoute>} />
           <Route path="/hr/profile" element={<ProtectedRoute requiredModule="hr"><ProfilePage /></ProtectedRoute>} />
 
           {/* Leaderboard Module */}

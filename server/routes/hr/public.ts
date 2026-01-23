@@ -14,7 +14,16 @@ router.get("/directory", async (req: Request, res: Response) => {
   try {
     const { department, search } = req.query;
 
-    let query = db
+    const baseConditions = [
+      eq(users.isPublicProfile, true),
+      eq(users.isActive, true),
+    ];
+
+    if (department && typeof department === 'string') {
+      baseConditions.push(eq(users.department, department));
+    }
+
+    let employees = await db
       .select({
         id: users.id,
         slug: users.slug,
@@ -26,25 +35,7 @@ router.get("/directory", async (req: Request, res: Response) => {
         publicBio: users.publicBio,
       })
       .from(users)
-      .where(
-        and(
-          eq(users.isPublicProfile, true),
-          eq(users.isActive, true)
-        )
-      );
-
-    // Apply filters
-    if (department && typeof department === 'string') {
-      query = query.where(
-        and(
-          eq(users.isPublicProfile, true),
-          eq(users.isActive, true),
-          eq(users.department, department)
-        )
-      );
-    }
-
-    let employees = await query;
+      .where(and(...baseConditions));
 
     // Apply search filter if provided
     if (search && typeof search === 'string') {

@@ -345,10 +345,11 @@ This is an automated message from Roof ER Command Center.
  */
 export function ptoRequestSubmittedTemplate(
   employee: { firstName: string; lastName: string; email: string; position?: string | null },
-  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason: string; isExempt?: boolean | null; createdByAdmin?: number | null },
+  request: { id: number; startDate: string; endDate: string; days: number; type: string; reason?: string; isExempt?: boolean | null; createdByAdmin?: number | null },
   manager: { firstName: string; email: string }
 ): { subject: string; html: string; text: string } {
   const subject = `PTO Request from ${employee.firstName} ${employee.lastName}`;
+  const reasonText = request.reason?.trim() ? request.reason : 'Not specified';
 
   // Create badge HTML
   const badges = [];
@@ -400,7 +401,7 @@ export function ptoRequestSubmittedTemplate(
             <p style="margin: 5px 0;"><strong>Start Date:</strong> ${new Date(request.startDate).toLocaleDateString()}</p>
             <p style="margin: 5px 0;"><strong>End Date:</strong> ${new Date(request.endDate).toLocaleDateString()}</p>
             <p style="margin: 5px 0;"><strong>Duration:</strong> ${request.days} day${request.days > 1 ? 's' : ''}</p>
-            <p style="margin: 5px 0;"><strong>Reason:</strong> ${request.reason}</p>
+            <p style="margin: 5px 0;"><strong>Reason:</strong> ${reasonText}</p>
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
@@ -432,7 +433,7 @@ Type: ${request.type}
 Start Date: ${new Date(request.startDate).toLocaleDateString()}
 End Date: ${new Date(request.endDate).toLocaleDateString()}
 Duration: ${request.days} day${request.days > 1 ? 's' : ''}
-Reason: ${request.reason}${badgeText}
+Reason: ${reasonText}${badgeText}
 
 Please review this request in the HR portal.
 

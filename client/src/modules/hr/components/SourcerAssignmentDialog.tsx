@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, User } from 'lucide-react';
@@ -160,7 +161,7 @@ export function SourcerAssignmentDialog({ candidate, open, onOpenChange }: Sourc
             <Input
               placeholder="Enter referrer's name"
               value={referralName}
-              onChange={(e) => setReferralName(e.target.value)}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => setReferralName(event.target.value)}
             />
             <p className="text-xs text-muted-foreground">
               Track who referred this candidate

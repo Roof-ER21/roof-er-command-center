@@ -42,9 +42,9 @@ export function EquipmentSignaturePage({ title, description, expectedType }: Equ
   const [submitted, setSubmitted] = useState(false);
 
   const { data, isLoading, error } = useQuery<EquipmentToken>({
-    queryKey: ["/api/hr/public/equipment", token],
+    queryKey: ["/api/public/equipment", token],
     queryFn: async () => {
-      const response = await fetch(`/api/hr/public/equipment/${token}`);
+      const response = await fetch(`/api/public/equipment/${token}`);
       if (!response.ok) {
         const errorBody = await response.json();
         throw new Error(errorBody?.error || "Failed to load equipment");
@@ -57,7 +57,7 @@ export function EquipmentSignaturePage({ title, description, expectedType }: Equ
 
   const signMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`/api/hr/public/equipment/${token}/sign`, {
+      const response = await fetch(`/api/public/equipment/${token}/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -101,7 +101,13 @@ export async function checkOverdueTasks(): Promise<void> {
         continue;
       }
 
-      const daysOverdue = calculateDaysOverdue(task.dueDate!);
+      if (!task.dueDate) {
+        console.warn(`⚠️  Task ${task.id} has no due date; skipping overdue notification`);
+        continue;
+      }
+
+      const dueDate = task.dueDate;
+      const daysOverdue = calculateDaysOverdue(dueDate);
 
       // Create in-app notification
       try {

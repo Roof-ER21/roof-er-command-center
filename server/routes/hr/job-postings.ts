@@ -10,12 +10,13 @@ router.get("/", async (req: Request, res: Response) => {
   try {
     const statusFilter = req.query.status as string | undefined;
 
-    let query = db.select().from(jobPostings);
-    if (statusFilter && statusFilter !== 'all') {
-      query = query.where(eq(jobPostings.status, statusFilter));
-    }
+    const baseQuery = db.select().from(jobPostings);
+    const filteredQuery =
+      statusFilter && statusFilter !== 'all'
+        ? baseQuery.where(eq(jobPostings.status, statusFilter))
+        : baseQuery;
 
-    const allPostings = await query.orderBy(desc(jobPostings.createdAt));
+    const allPostings = await filteredQuery.orderBy(desc(jobPostings.createdAt));
     res.json(allPostings);
   } catch (error) {
     console.error("Job postings fetch error:", error);

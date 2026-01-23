@@ -520,11 +520,11 @@ async function checkSalesAchievements(userId: number, stats: { monthlyRevenue: n
             wsHandlers.leaderboard.celebrateAchievement({
               userId,
               userName: user ? `${user.firstName} ${user.lastName}` : 'Unknown',
-              achievementType: 'sales',
+              achievementType: 'milestone',
               title: achievement.name,
               description: achievement.description,
               icon: achievement.icon,
-              timestamp: new Date().toISOString(),
+              timestamp: new Date(),
             });
           }
         }

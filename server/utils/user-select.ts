@@ -35,6 +35,7 @@ export function selectUserColumns() {
     timezone: users.timezone,
     linkedSalesRepId: users.linkedSalesRepId,
     team: users.team,
+    slug: users.slug,
     currentBonusTier: users.currentBonusTier,
     trainingLevel: users.trainingLevel,
     totalXp: users.totalXp,

@@ -13,6 +13,10 @@ import {
   Users,
   CheckCheck,
   X,
+  ClipboardList,
+  CalendarCheck,
+  AlertTriangle,
+  UserCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,6 +43,10 @@ const notificationIcons = {
   streak_reminder: GraduationCap,
   training_complete: GraduationCap,
   team_update: Users,
+  pto_request: ClipboardList,
+  pto_reminder: CalendarCheck,
+  task_overdue: AlertTriangle,
+  onboarding_assigned: UserCheck,
 };
 
 const notificationColors = {
@@ -52,6 +60,10 @@ const notificationColors = {
   streak_reminder: 'text-orange-500',
   training_complete: 'text-green-500',
   team_update: 'text-blue-500',
+  pto_request: 'text-slate-500',
+  pto_reminder: 'text-emerald-500',
+  task_overdue: 'text-amber-600',
+  onboarding_assigned: 'text-cyan-500',
 };
 
 export function NotificationCenter() {

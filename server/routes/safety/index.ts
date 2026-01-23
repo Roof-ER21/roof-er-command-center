@@ -63,17 +63,26 @@ router.get('/incidents', requireAuth, async (req, res) => {
 
     // Apply filters
     const conditions: any[] = [];
+    const allowedSeverities = ['low', 'medium', 'high', 'critical'] as const;
+    const allowedStatuses = ['reported', 'investigating', 'resolved', 'closed'] as const;
+    const allowedCategories = ['injury', 'near_miss', 'property_damage', 'environmental', 'other'] as const;
 
     if (severity) {
-      conditions.push(eq(safetyIncidents.severity, severity as string));
+      if (allowedSeverities.includes(severity as typeof allowedSeverities[number])) {
+        conditions.push(eq(safetyIncidents.severity, severity as typeof allowedSeverities[number]));
+      }
     }
 
     if (status) {
-      conditions.push(eq(safetyIncidents.status, status as string));
+      if (allowedStatuses.includes(status as typeof allowedStatuses[number])) {
+        conditions.push(eq(safetyIncidents.status, status as typeof allowedStatuses[number]));
+      }
     }
 
     if (category) {
-      conditions.push(eq(safetyIncidents.category, category as string));
+      if (allowedCategories.includes(category as typeof allowedCategories[number])) {
+        conditions.push(eq(safetyIncidents.category, category as typeof allowedCategories[number]));
+      }
     }
 
     if (startDate) {
