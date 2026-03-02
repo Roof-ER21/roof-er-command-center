@@ -13,56 +13,13 @@ import { PinLoginPage } from "@/modules/auth/PinLoginPage";
 // Dashboard
 import { DashboardPage } from "@/modules/dashboard/DashboardPage";
 
-// HR Module
-import { HRDashboard } from "@/modules/hr/HRDashboard";
-import { EmployeesPage } from "@/modules/hr/EmployeesPage";
-import { PTOPage } from "@/modules/hr/PTOPage";
-import { RecruitingPage } from "@/modules/hr/RecruitingPage";
-import { ResumeUploaderPage } from "@/modules/hr/pages/ResumeUploaderPage";
-import { ContractsPage } from "@/modules/hr/pages/ContractsPage";
-import { EquipmentPage } from "@/modules/hr/pages/EquipmentPage";
-import { InventoryPage } from "@/modules/hr/pages/InventoryPage";
-import { OnboardingPage } from "@/modules/hr/pages/OnboardingPage";
-import { EmployeeDetailPage } from "@/modules/hr/pages/EmployeeDetailPage";
-import { DocumentsPage } from "@/modules/hr/pages/DocumentsPage";
-import { EmailTemplatesPage } from "@/modules/hr/pages/EmailTemplatesPage";
-import { ReviewsPage } from "@/modules/hr/pages/ReviewsPage";
-import { TeamDirectoryPage } from "@/modules/hr/pages/TeamDirectoryPage";
-import { OrgChartPage } from "@/modules/hr/pages/OrgChartPage";
-import { AttendancePage } from "@/modules/hr/pages/AttendancePage";
-import { AttendanceCheckInPage } from "@/modules/hr/pages/AttendanceCheckInPage";
-import { TerritoriesPage } from "@/modules/hr/pages/TerritoriesPage";
-import { EmployeeAssignmentsPage } from "@/modules/hr/pages/EmployeeAssignmentsPage";
-import { WorkflowBuilderPage } from "@/modules/hr/pages/WorkflowBuilderPage";
-import { ToolsPage } from "@/modules/hr/pages/ToolsPage";
-import { EmployeePortalPage } from "@/modules/hr/pages/EmployeePortalPage";
-import { SusanAIAdminPage } from "@/modules/hr/pages/SusanAIAdminPage";
-import { PublicContractPage } from "@/modules/hr/pages/PublicContractPage";
-import { EquipmentAgreementFormPage } from "@/modules/hr/pages/EquipmentAgreementFormPage";
-import { EquipmentChecklistFormPage } from "@/modules/hr/pages/EquipmentChecklistFormPage";
-import { EquipmentReturnFormPage } from "@/modules/hr/pages/EquipmentReturnFormPage";
-import { SignEquipmentReceiptPage } from "@/modules/hr/pages/SignEquipmentReceiptPage";
-import { TasksPage } from "@/modules/hr/pages/TasksPage";
-import { WorkplacePage } from "@/modules/hr/pages/WorkplacePage";
-import { ScheduledReportsPage } from "@/modules/hr/pages/ScheduledReportsPage";
-import { AdminControlHubPage } from "@/modules/hr/pages/AdminControlHubPage";
-import { GoogleIntegrationPage } from "@/modules/hr/pages/GoogleIntegrationPage";
-import { TeamDashboardPage } from "@/modules/hr/pages/TeamDashboardPage";
-import { EnterpriseAnalyticsPage } from "@/modules/hr/pages/EnterpriseAnalyticsPage";
-import { SafetyDashboardPage } from "@/modules/hr/pages/SafetyDashboardPage";
-import { RoadmapPage } from "@/modules/hr/pages/RoadmapPage";
-import { CoiDocumentsPage } from "@/modules/hr/pages/CoiDocumentsPage";
-import { OnboardingTemplatesPage } from "@/modules/hr/pages/OnboardingTemplatesPage";
-import { RecruitingAnalyticsPage } from "@/modules/hr/pages/RecruitingAnalyticsPage";
-import { PtoPoliciesPage } from "@/modules/hr/pages/PtoPoliciesPage";
-import { AICriteriaConfigPage } from "@/modules/hr/pages/AICriteriaConfigPage";
-import { JobPostingsPage } from "@/modules/hr/pages/JobPostingsPage";
-// Consolidated HR Hub Pages
-import { PeoplePage } from "@/modules/hr/pages/PeoplePage";
-import { TimePage } from "@/modules/hr/pages/TimePage";
-import { OperationsPage } from "@/modules/hr/pages/OperationsPage";
-import { AnalyticsPage } from "@/modules/hr/pages/AnalyticsPage";
-import { AdminPage } from "@/modules/hr/pages/AdminPage";
+// Pipeline Module
+import { ActiveLeadsPage } from "@/modules/pipeline/ActiveLeadsPage";
+import { CanvassingPage } from "@/modules/pipeline/CanvassingPage";
+
+// Jobs Module
+import { JobsDashboardPage } from "@/modules/jobs/JobsDashboardPage";
+import { JobDetailPage } from "@/modules/jobs/JobDetailPage";
 
 // Leaderboard Module
 import { LeaderboardDashboard } from "@/modules/leaderboard/LeaderboardDashboard";
@@ -70,6 +27,40 @@ import { SalesLeaderboard } from "@/modules/leaderboard/SalesLeaderboard";
 import { ContestsPage } from "@/modules/leaderboard/ContestsPage";
 import { TVDisplayPage } from "@/modules/leaderboard/pages/TVDisplayPage";
 import { TeamsPage } from "@/modules/leaderboard/TeamsPage";
+
+// Notifications Module
+import { NotificationsDashboardPage } from "@/modules/notifications/NotificationsDashboardPage";
+import { MessagesPage } from "@/modules/notifications/MessagesPage";
+import { TaskListPage } from "@/modules/notifications/TaskListPage";
+import { RemindersPage } from "@/modules/notifications/RemindersPage";
+
+// Billing Module
+import { BillingDashboardPage } from "@/modules/billing/BillingDashboardPage";
+import { DownpaymentTrackerPage } from "@/modules/billing/DownpaymentTrackerPage";
+import { ARTrackerPage } from "@/modules/billing/ARTrackerPage";
+
+// Claims Module
+import { ClaimsDashboardPage } from "@/modules/claims/ClaimsDashboardPage";
+import { SupplementTrackerPage } from "@/modules/claims/SupplementTrackerPage";
+
+// Production Module
+import { ProductionDashboardPage } from "@/modules/production/ProductionDashboardPage";
+import { MaterialTrackerPage } from "@/modules/production/MaterialTrackerPage";
+import { PunchOutTrackerPage } from "@/modules/production/PunchOutTrackerPage";
+import { QualityInspectionsPage } from "@/modules/production/QualityInspectionsPage";
+import { EventCalendarPage } from "@/modules/production/EventCalendarPage";
+
+// Admin Module
+import { AutomationControlPage } from "@/modules/admin/AutomationControlPage";
+import { DiagnosticsLabPage } from "@/modules/admin/DiagnosticsLabPage";
+import { PayrollPage } from "@/modules/admin/PayrollPage";
+import { RolesPermissionsPage } from "@/modules/admin/RolesPermissionsPage";
+import { PricingLibraryPage } from "@/modules/admin/PricingLibraryPage";
+import { FixesImprovementsPage } from "@/modules/admin/FixesImprovementsPage";
+import { UserManagementPage } from "@/modules/admin/UserManagementPage";
+
+// Archive Module
+import { ArchivedJobsPage } from "@/modules/archive/ArchivedJobsPage";
 
 // Sales Module
 import { SalesPerformancePage } from "@/modules/sales/SalesPerformancePage";
@@ -99,10 +90,8 @@ import { PublicProfilePage } from "@/pages/PublicProfilePage";
 // Protected Route Component
 function ProtectedRoute({
   children,
-  requiredModule
 }: {
   children: React.ReactNode;
-  requiredModule?: 'hr' | 'leaderboard' | 'training' | 'field';
 }) {
   const { user, isLoading } = useAuth();
 
@@ -116,19 +105,6 @@ function ProtectedRoute({
 
   if (!user) {
     return <Navigate to="/login" replace />;
-  }
-
-  // Check module access if required
-  if (requiredModule) {
-    const hasAccess =
-      (requiredModule === 'hr' && user.hasHRAccess) ||
-      (requiredModule === 'leaderboard' && user.hasLeaderboardAccess) ||
-      (requiredModule === 'training' && user.hasTrainingAccess) ||
-      (requiredModule === 'field' && user.hasFieldAccess);
-
-    if (!hasAccess) {
-      return <Navigate to="/dashboard" replace />;
-    }
   }
 
   return <>{children}</>;
@@ -150,87 +126,77 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
 
-          {/* HR Module */}
-          <Route path="/hr" element={<ProtectedRoute requiredModule="hr"><HRDashboard /></ProtectedRoute>} />
-          {/* Consolidated HR Hub Pages */}
-          <Route path="/hr/people" element={<ProtectedRoute requiredModule="hr"><PeoplePage /></ProtectedRoute>} />
-          <Route path="/hr/time" element={<ProtectedRoute requiredModule="hr"><TimePage /></ProtectedRoute>} />
-          <Route path="/hr/operations" element={<ProtectedRoute requiredModule="hr"><OperationsPage /></ProtectedRoute>} />
-          <Route path="/hr/analytics" element={<ProtectedRoute requiredModule="hr"><AnalyticsPage /></ProtectedRoute>} />
-          <Route path="/hr/admin" element={<ProtectedRoute requiredModule="hr"><AdminPage /></ProtectedRoute>} />
-          {/* Individual HR Pages (accessed via hub pages) */}
-          <Route path="/hr/employees" element={<ProtectedRoute requiredModule="hr"><EmployeesPage /></ProtectedRoute>} />
-          <Route path="/hr/employees/:id" element={<ProtectedRoute requiredModule="hr"><EmployeeDetailPage /></ProtectedRoute>} />
-          <Route path="/hr/pto" element={<ProtectedRoute requiredModule="hr"><PTOPage /></ProtectedRoute>} />
-          <Route path="/hr/recruiting" element={<ProtectedRoute requiredModule="hr"><RecruitingPage /></ProtectedRoute>} />
-          <Route path="/hr/contracts" element={<ProtectedRoute requiredModule="hr"><ContractsPage /></ProtectedRoute>} />
-          <Route path="/hr/equipment" element={<ProtectedRoute requiredModule="hr"><EquipmentPage /></ProtectedRoute>} />
-          <Route path="/hr/inventory" element={<ProtectedRoute requiredModule="hr"><InventoryPage /></ProtectedRoute>} />
-          <Route path="/hr/equipment-agreement" element={<ProtectedRoute requiredModule="hr"><EquipmentPage /></ProtectedRoute>} />
-          <Route path="/hr/equipment-checklist" element={<ProtectedRoute requiredModule="hr"><EquipmentPage /></ProtectedRoute>} />
-          <Route path="/hr/equipment-return" element={<ProtectedRoute requiredModule="hr"><EquipmentPage /></ProtectedRoute>} />
-          <Route path="/hr/equipment-receipt" element={<ProtectedRoute requiredModule="hr"><EquipmentPage /></ProtectedRoute>} />
-          <Route path="/hr/onboarding" element={<ProtectedRoute requiredModule="hr"><OnboardingPage /></ProtectedRoute>} />
-          <Route path="/hr/documents" element={<ProtectedRoute requiredModule="hr"><DocumentsPage /></ProtectedRoute>} />
-          <Route path="/hr/reviews" element={<ProtectedRoute requiredModule="hr"><ReviewsPage /></ProtectedRoute>} />
-          <Route path="/hr/team-directory" element={<ProtectedRoute requiredModule="hr"><TeamDirectoryPage /></ProtectedRoute>} />
-          <Route path="/hr/org-chart" element={<ProtectedRoute requiredModule="hr"><OrgChartPage /></ProtectedRoute>} />
-          <Route path="/hr/attendance" element={<ProtectedRoute requiredModule="hr"><AttendancePage /></ProtectedRoute>} />
-          <Route path="/hr/attendance/check-in" element={<AttendanceCheckInPage />} />
-          <Route path="/hr/pto-policies" element={<ProtectedRoute requiredModule="hr"><PtoPoliciesPage /></ProtectedRoute>} />
-          <Route path="/hr/territories" element={<ProtectedRoute requiredModule="hr"><TerritoriesPage /></ProtectedRoute>} />
-          <Route path="/hr/onboarding-templates" element={<ProtectedRoute requiredModule="hr"><OnboardingTemplatesPage /></ProtectedRoute>} />
-          <Route path="/hr/email-templates" element={<ProtectedRoute requiredModule="hr"><EmailTemplatesPage /></ProtectedRoute>} />
-          <Route path="/hr/recruiting-analytics" element={<ProtectedRoute requiredModule="hr"><RecruitingAnalyticsPage /></ProtectedRoute>} />
-          <Route path="/hr/enterprise-analytics" element={<ProtectedRoute requiredModule="hr"><EnterpriseAnalyticsPage /></ProtectedRoute>} />
-          <Route path="/hr/safety" element={<ProtectedRoute requiredModule="hr"><SafetyDashboardPage /></ProtectedRoute>} />
-          <Route path="/hr/roadmap" element={<ProtectedRoute requiredModule="hr"><RoadmapPage /></ProtectedRoute>} />
-          <Route path="/hr/coi-documents" element={<ProtectedRoute requiredModule="hr"><CoiDocumentsPage /></ProtectedRoute>} />
-          <Route path="/hr/employee-assignments" element={<ProtectedRoute requiredModule="hr"><EmployeeAssignmentsPage /></ProtectedRoute>} />
-          <Route path="/hr/workflows" element={<ProtectedRoute requiredModule="hr"><WorkflowBuilderPage /></ProtectedRoute>} />
-          <Route path="/hr/tools" element={<ProtectedRoute requiredModule="hr"><ToolsPage /></ProtectedRoute>} />
-          <Route path="/hr/employee-portal" element={<ProtectedRoute requiredModule="hr"><EmployeePortalPage /></ProtectedRoute>} />
-          <Route path="/hr/susan-ai-admin" element={<ProtectedRoute requiredModule="hr"><SusanAIAdminPage /></ProtectedRoute>} />
-          <Route path="/hr/tasks" element={<ProtectedRoute requiredModule="hr"><TasksPage /></ProtectedRoute>} />
-          <Route path="/hr/workplace" element={<ProtectedRoute requiredModule="hr"><WorkplacePage /></ProtectedRoute>} />
-          <Route path="/hr/calendar" element={<Navigate to="/hr/workplace?tab=calendar" replace />} />
-          <Route path="/hr/meeting-rooms" element={<Navigate to="/hr/workplace?tab=rooms" replace />} />
-          <Route path="/hr/qr-codes" element={<Navigate to="/hr/workplace?tab=qr" replace />} />
-          <Route path="/hr/scheduled-reports" element={<ProtectedRoute requiredModule="hr"><ScheduledReportsPage /></ProtectedRoute>} />
-          <Route path="/hr/admin-hub" element={<ProtectedRoute requiredModule="hr"><AdminControlHubPage /></ProtectedRoute>} />
-          <Route path="/hr/google-integration" element={<ProtectedRoute requiredModule="hr"><GoogleIntegrationPage /></ProtectedRoute>} />
-          <Route path="/hr/team-dashboard" element={<ProtectedRoute requiredModule="hr"><TeamDashboardPage /></ProtectedRoute>} />
-          <Route path="/hr/resume-uploader" element={<ProtectedRoute requiredModule="hr"><ResumeUploaderPage /></ProtectedRoute>} />
-          <Route path="/hr/ai-criteria" element={<ProtectedRoute requiredModule="hr"><AICriteriaConfigPage /></ProtectedRoute>} />
-          <Route path="/hr/job-postings" element={<ProtectedRoute requiredModule="hr"><JobPostingsPage /></ProtectedRoute>} />
-          <Route path="/hr/profile" element={<ProtectedRoute requiredModule="hr"><ProfilePage /></ProtectedRoute>} />
+          {/* Pipeline Module */}
+          <Route path="/pipeline/leads" element={<ActiveLeadsPage />} />
+          <Route path="/pipeline/canvassing" element={<CanvassingPage />} />
+
+          {/* Jobs Module */}
+          <Route path="/jobs" element={<JobsDashboardPage />} />
+          <Route path="/jobs/:jobId" element={<JobDetailPage />} />
 
           {/* Leaderboard Module */}
-          <Route path="/leaderboard" element={<ProtectedRoute requiredModule="leaderboard"><LeaderboardDashboard /></ProtectedRoute>} />
-          <Route path="/leaderboard/sales" element={<ProtectedRoute requiredModule="leaderboard"><SalesLeaderboard /></ProtectedRoute>} />
-          <Route path="/leaderboard/contests" element={<ProtectedRoute requiredModule="leaderboard"><ContestsPage /></ProtectedRoute>} />
-          <Route path="/leaderboard/teams" element={<ProtectedRoute requiredModule="leaderboard"><TeamsPage /></ProtectedRoute>} />
+          <Route path="/leaderboard" element={<LeaderboardDashboard />} />
+          <Route path="/leaderboard/sales" element={<SalesLeaderboard />} />
+          <Route path="/leaderboard/contests" element={<ContestsPage />} />
+          <Route path="/leaderboard/teams" element={<TeamsPage />} />
 
           {/* Sales Module */}
-          <Route path="/sales" element={<ProtectedRoute requiredModule="leaderboard"><SalesPerformancePage /></ProtectedRoute>} />
-          <Route path="/sales/performance" element={<ProtectedRoute requiredModule="leaderboard"><SalesPerformancePage /></ProtectedRoute>} />
+          <Route path="/sales" element={<SalesPerformancePage />} />
+          <Route path="/sales/performance" element={<SalesPerformancePage />} />
+
+          {/* Notifications Module */}
+          <Route path="/notifications" element={<NotificationsDashboardPage />} />
+          <Route path="/notifications/messages" element={<MessagesPage />} />
+          <Route path="/notifications/tasks" element={<TaskListPage />} />
+          <Route path="/notifications/reminders" element={<RemindersPage />} />
+
+          {/* Billing & Recovery Module */}
+          <Route path="/billing" element={<BillingDashboardPage />} />
+          <Route path="/billing/downpayments" element={<DownpaymentTrackerPage />} />
+          <Route path="/billing/ar" element={<ARTrackerPage />} />
+
+          {/* Claims Center Module */}
+          <Route path="/claims" element={<ClaimsDashboardPage />} />
+          <Route path="/claims/supplements" element={<SupplementTrackerPage />} />
+
+          {/* Production Hub Module */}
+          <Route path="/production" element={<ProductionDashboardPage />} />
+          <Route path="/production/materials" element={<MaterialTrackerPage />} />
+          <Route path="/production/punch-outs" element={<PunchOutTrackerPage />} />
+          <Route path="/production/inspections" element={<QualityInspectionsPage />} />
+          <Route path="/production/calendar" element={<EventCalendarPage />} />
+
+          {/* Admin Tools Module */}
+          <Route path="/admin/automation" element={<AutomationControlPage />} />
+          <Route path="/admin/diagnostics" element={<DiagnosticsLabPage />} />
+          <Route path="/admin/payroll" element={<PayrollPage />} />
+          <Route path="/admin/roles" element={<RolesPermissionsPage />} />
+          <Route path="/admin/pricing" element={<PricingLibraryPage />} />
+          <Route path="/admin/fixes" element={<FixesImprovementsPage />} />
+          <Route path="/admin/users" element={<UserManagementPage />} />
+
+          {/* Archived Jobs */}
+          <Route path="/archived" element={<ArchivedJobsPage />} />
 
           {/* Training Module */}
-          <Route path="/training" element={<ProtectedRoute requiredModule="training"><TrainingDashboard /></ProtectedRoute>} />
-          <Route path="/training/coach" element={<ProtectedRoute requiredModule="training"><CoachModePage /></ProtectedRoute>} />
-          <Route path="/training/roleplay" element={<ProtectedRoute requiredModule="training"><RoleplayPage /></ProtectedRoute>} />
-          <Route path="/training/curriculum" element={<ProtectedRoute requiredModule="training"><CurriculumPage /></ProtectedRoute>} />
-          <Route path="/training/leaderboard" element={<ProtectedRoute requiredModule="training"><TrainingLeaderboardPage /></ProtectedRoute>} />
-          <Route path="/training/modules/:moduleId" element={<ProtectedRoute requiredModule="training"><ModulePage /></ProtectedRoute>} />
-          <Route path="/training/achievements" element={<ProtectedRoute requiredModule="training"><AchievementsPage /></ProtectedRoute>} />
+          <Route path="/training" element={<TrainingDashboard />} />
+          <Route path="/training/coach" element={<CoachModePage />} />
+          <Route path="/training/roleplay" element={<RoleplayPage />} />
+          <Route path="/training/curriculum" element={<CurriculumPage />} />
+          <Route path="/training/leaderboard" element={<TrainingLeaderboardPage />} />
+          <Route path="/training/modules/:moduleId" element={<ModulePage />} />
+          <Route path="/training/achievements" element={<AchievementsPage />} />
 
           {/* Field Module */}
-          <Route path="/field" element={<ProtectedRoute requiredModule="field"><FieldDashboard /></ProtectedRoute>} />
-          <Route path="/field/chat" element={<ProtectedRoute requiredModule="field"><ChatPage /></ProtectedRoute>} />
-          <Route path="/field/email" element={<ProtectedRoute requiredModule="field"><EmailGeneratorPage /></ProtectedRoute>} />
-          <Route path="/field/documents" element={<ProtectedRoute requiredModule="field"><FieldDocumentsPage /></ProtectedRoute>} />
-          <Route path="/field/document-analysis" element={<ProtectedRoute requiredModule="field"><DocumentAnalysisPage /></ProtectedRoute>} />
-          <Route path="/field/images" element={<ProtectedRoute requiredModule="field"><ImageAnalysisPage /></ProtectedRoute>} />
+          <Route path="/field" element={<FieldDashboard />} />
+          <Route path="/field/chat" element={<ChatPage />} />
+          <Route path="/field/email" element={<EmailGeneratorPage />} />
+          <Route path="/field/documents" element={<FieldDocumentsPage />} />
+          <Route path="/field/document-analysis" element={<DocumentAnalysisPage />} />
+          <Route path="/field/images" element={<ImageAnalysisPage />} />
+
+          {/* Profile */}
+          <Route path="/profile" element={<ProfilePage />} />
         </Route>
 
         {/* TV Display (no auth, full screen) */}
@@ -240,13 +206,6 @@ export default function App() {
         {/* Public Employee Directory (NO AUTH) */}
         <Route path="/directory" element={<PublicDirectoryPage />} />
         <Route path="/team/:slug" element={<PublicProfilePage />} />
-
-        {/* Public HR forms */}
-        <Route path="/public/contract/:token" element={<PublicContractPage />} />
-        <Route path="/public/equipment-agreement/:token" element={<EquipmentAgreementFormPage />} />
-        <Route path="/public/equipment-checklist/:token" element={<EquipmentChecklistFormPage />} />
-        <Route path="/public/equipment-return/:token" element={<EquipmentReturnFormPage />} />
-        <Route path="/public/equipment-receipt/:token" element={<SignEquipmentReceiptPage />} />
 
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

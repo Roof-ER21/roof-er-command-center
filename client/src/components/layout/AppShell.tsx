@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import {
-  Users,
-  Trophy,
-  GraduationCap,
-  MapPin,
   Home,
   Menu,
   X,
@@ -14,39 +10,45 @@ import {
   ChevronDown,
   ChevronRight,
   User,
-  UserPlus,
-  UserCog,
-  Calendar,
-  CalendarClock,
-  CalendarDays,
-  Briefcase,
-  FileText,
-  Package,
-  UserCheck,
-  ShieldCheck,
-  Award,
-  Tv,
-  UsersRound,
-  MessageSquare,
-  TrendingUp,
-  BarChart3,
-  Mail,
-  FileSearch,
-  GitBranch,
-  Wrench,
-  Bot,
-  ClipboardList,
-  QrCode,
-  KeyRound,
-  Image,
-  BookOpen,
   Moon,
   Sun,
-  DollarSign,
+  // CRM Icons
   Target,
+  MapPin,
+  Briefcase,
+  Trophy,
+  MessageSquare,
+  DollarSign,
+  FileCheck,
+  Hammer,
+  Shield,
+  Archive,
+  GraduationCap,
+  // Sub-nav icons
+  Users,
+  Navigation,
+  ClipboardList,
+  Clock,
+  AlertTriangle,
+  CreditCard,
+  BarChart3,
+  Package,
+  Wrench,
+  ClipboardCheck,
+  CalendarDays,
+  Zap,
+  PieChart,
+  Calculator,
+  LayoutTemplate,
+  Bug,
+  UserPlus,
+  Mail,
+  FileSearch,
+  Image,
+  Scale,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useAuth, useModuleAccess } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,7 +59,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MODULE_CONFIG } from "@shared/constants";
 import { Breadcrumb } from "./Breadcrumb";
 
 export function AppShell() {
@@ -68,80 +69,121 @@ export function AppShell() {
   const { user, logout, isLogoutPending } = useAuth();
   const { theme, setTheme } = useTheme();
 
-  const hasHRAccess = useModuleAccess('hr');
-  const hasLeaderboardAccess = useModuleAccess('leaderboard');
-  const hasTrainingAccess = useModuleAccess('training');
-  const hasFieldAccess = useModuleAccess('field');
-
   interface NavItem {
     name: string;
     href: string;
     icon: any;
-    show: boolean;
     color?: string;
-    section?: string;
     children?: Omit<NavItem, 'children'>[];
   }
 
   const navigation: NavItem[] = [
-    { name: "Dashboard", href: "/dashboard", icon: Home, show: true },
+    { name: "Dashboard", href: "/dashboard", icon: Home },
     {
-      name: "HR",
-      href: "/hr",
-      icon: Users,
-      show: hasHRAccess,
-      color: "text-purple-600",
+      name: "Pipeline",
+      href: "/pipeline/leads",
+      icon: Target,
+      color: "text-blue-600",
       children: [
-        // Consolidated navigation - 8 main items
-        { name: "People", href: "/hr/people", icon: UsersRound, show: hasHRAccess },
-        { name: "Recruiting", href: "/hr/recruiting", icon: UserPlus, show: hasHRAccess },
-        { name: "Time & Attendance", href: "/hr/time", icon: CalendarClock, show: hasHRAccess },
-        { name: "Documents", href: "/hr/documents", icon: FileSearch, show: hasHRAccess },
-        { name: "Equipment", href: "/hr/equipment", icon: Package, show: hasHRAccess },
-        { name: "Operations", href: "/hr/operations", icon: ClipboardList, show: hasHRAccess },
-        { name: "Analytics", href: "/hr/analytics", icon: BarChart3, show: hasHRAccess },
-        { name: "Admin", href: "/hr/admin", icon: Settings, show: hasHRAccess },
+        { name: "Active Leads", href: "/pipeline/leads", icon: Users },
+        { name: "Canvassing", href: "/pipeline/canvassing", icon: Navigation },
       ],
+    },
+    {
+      name: "Jobs",
+      href: "/jobs",
+      icon: Briefcase,
+      color: "text-indigo-600",
     },
     {
       name: "Leaderboard",
       href: "/leaderboard",
       icon: Trophy,
-      show: hasLeaderboardAccess,
       color: "text-green-600",
+    },
+    {
+      name: "Notifications",
+      href: "/notifications",
+      icon: Bell,
+      color: "text-amber-600",
       children: [
-        { name: "Rankings", href: "/leaderboard", icon: Trophy, show: hasLeaderboardAccess },
-        { name: "Sales Performance", href: "/sales", icon: DollarSign, show: hasLeaderboardAccess },
-        { name: "Contests", href: "/leaderboard/contests", icon: Award, show: hasLeaderboardAccess },
-        { name: "Teams", href: "/leaderboard/teams", icon: UsersRound, show: hasLeaderboardAccess },
-        { name: "TV Display", href: "/leaderboard/tv", icon: Tv, show: hasLeaderboardAccess },
+        { name: "Dashboard", href: "/notifications", icon: Bell },
+        { name: "Messages", href: "/notifications/messages", icon: MessageSquare },
+        { name: "Task List", href: "/notifications/tasks", icon: ClipboardList },
+        { name: "Reminders", href: "/notifications/reminders", icon: Clock },
       ],
+    },
+    {
+      name: "Billing & Recovery",
+      href: "/billing",
+      icon: DollarSign,
+      color: "text-emerald-600",
+      children: [
+        { name: "Dashboard", href: "/billing", icon: DollarSign },
+        { name: "Downpayment Tracker", href: "/billing/downpayments", icon: CreditCard },
+        { name: "A/R Tracker", href: "/billing/ar", icon: BarChart3 },
+      ],
+    },
+    {
+      name: "Claims Center",
+      href: "/claims",
+      icon: FileCheck,
+      color: "text-purple-600",
+      children: [
+        { name: "Dashboard", href: "/claims", icon: FileCheck },
+        { name: "Supplement Tracker", href: "/claims/supplements", icon: ClipboardList },
+      ],
+    },
+    {
+      name: "Production Hub",
+      href: "/production",
+      icon: Hammer,
+      color: "text-orange-600",
+      children: [
+        { name: "Dashboard", href: "/production", icon: Hammer },
+        { name: "Material Tracker", href: "/production/materials", icon: Package },
+        { name: "Punch Out Tracker", href: "/production/punch-outs", icon: Wrench },
+        { name: "Quality Inspections", href: "/production/inspections", icon: ClipboardCheck },
+        { name: "Event Calendar", href: "/production/calendar", icon: CalendarDays },
+      ],
+    },
+    {
+      name: "Admin Tools",
+      href: "/admin/automation",
+      icon: Shield,
+      color: "text-red-600",
+      children: [
+        { name: "Automation Control", href: "/admin/automation", icon: Zap },
+        { name: "Diagnostics Lab", href: "/admin/diagnostics", icon: PieChart },
+        { name: "Payroll & Compensation", href: "/admin/payroll", icon: Calculator },
+        { name: "Roles & Permissions", href: "/admin/roles", icon: Shield },
+        { name: "Pricing Library", href: "/admin/pricing", icon: LayoutTemplate },
+        { name: "Fixes / Improvements", href: "/admin/fixes", icon: Bug },
+        { name: "Users", href: "/admin/users", icon: UserPlus },
+      ],
+    },
+    {
+      name: "Archived Jobs",
+      href: "/archived",
+      icon: Archive,
+      color: "text-gray-600",
     },
     {
       name: "Training",
       href: "/training",
       icon: GraduationCap,
-      show: hasTrainingAccess,
       color: "text-amber-600",
-      children: [
-        { name: "Dashboard", href: "/training", icon: Home, show: hasTrainingAccess },
-        { name: "Curriculum", href: "/training/curriculum", icon: BookOpen, show: hasTrainingAccess },
-        { name: "Roleplay", href: "/training/roleplay", icon: MessageSquare, show: hasTrainingAccess },
-        { name: "Achievements", href: "/training/achievements", icon: Award, show: hasTrainingAccess },
-        { name: "Leaderboard", href: "/training/leaderboard", icon: Trophy, show: hasTrainingAccess },
-      ],
     },
     {
       name: "Field",
       href: "/field",
       icon: MapPin,
-      show: hasFieldAccess,
       color: "text-sky-600",
       children: [
-        { name: "Chat", href: "/field/chat", icon: MessageSquare, show: hasFieldAccess },
-        { name: "Email Generator", href: "/field/email", icon: Mail, show: hasFieldAccess },
-        { name: "Documents", href: "/field/documents", icon: FileSearch, show: hasFieldAccess },
-        { name: "Images", href: "/field/images", icon: Image, show: hasFieldAccess },
+        { name: "Chat", href: "/field/chat", icon: MessageSquare },
+        { name: "Email Generator", href: "/field/email", icon: Mail },
+        { name: "Documents", href: "/field/documents", icon: FileSearch },
+        { name: "Images", href: "/field/images", icon: Image },
       ],
     },
   ];
@@ -163,55 +205,17 @@ export function AppShell() {
   };
 
   const isPathActive = (href: string) => {
-    // Consolidated HR navigation - People section
-    if (href === "/hr/people") {
-      return [
-        "/hr/people", "/hr/employees", "/hr/team-dashboard", "/hr/team-directory",
-        "/hr/org-chart", "/hr/employee-assignments", "/hr/employee-portal"
-      ].some(p => location.pathname.startsWith(p));
-    }
-    // Recruiting section
-    if (href === "/hr/recruiting") {
-      return [
-        "/hr/recruiting", "/hr/recruiting-analytics", "/hr/resume-uploader",
-        "/hr/ai-criteria", "/hr/onboarding", "/hr/onboarding-templates"
-      ].some(p => location.pathname.startsWith(p));
-    }
-    // Time & Attendance section
-    if (href === "/hr/time") {
-      return [
-        "/hr/time", "/hr/pto", "/hr/pto-policies", "/hr/attendance",
-        "/hr/meeting-rooms", "/hr/calendar", "/hr/qr-codes", "/hr/workplace"
-      ].some(p => location.pathname.startsWith(p));
-    }
-    // Documents section
-    if (href === "/hr/documents") {
-      return [
-        "/hr/documents", "/hr/coi-documents", "/hr/email-templates", "/hr/contracts"
-      ].some(p => location.pathname.startsWith(p));
-    }
-    // Operations section
-    if (href === "/hr/operations") {
-      return [
-        "/hr/operations", "/hr/tools", "/hr/territories", "/hr/reviews",
-        "/hr/workflows", "/hr/tasks"
-      ].some(p => location.pathname.startsWith(p));
-    }
-    // Analytics section
-    if (href === "/hr/analytics") {
-      return [
-        "/hr/analytics", "/hr/enterprise-analytics", "/hr/safety", "/hr/roadmap"
-      ].some(p => location.pathname.startsWith(p));
-    }
-    // Admin section
-    if (href === "/hr/admin") {
-      return [
-        "/hr/admin", "/hr/admin-hub", "/hr/susan-ai-admin",
-        "/hr/scheduled-reports", "/hr/google-integration"
-      ].some(p => location.pathname.startsWith(p));
-    }
+    if (href === "/dashboard") return location.pathname === "/dashboard";
     return location.pathname === href ||
-      (href !== '/dashboard' && location.pathname.startsWith(href));
+      location.pathname.startsWith(href + "/");
+  };
+
+  const isParentActive = (item: NavItem) => {
+    if (isPathActive(item.href)) return true;
+    if (item.children) {
+      return item.children.some(child => isPathActive(child.href));
+    }
+    return false;
   };
 
   return (
@@ -240,12 +244,11 @@ export function AppShell() {
               <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9">
-              <Bell className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
+              <Link to="/notifications"><Bell className="h-4 w-4" /></Link>
             </Button>
           </div>
         </div>
-        {/* Mobile breadcrumb */}
         <div className="px-3 pb-2">
           <Breadcrumb />
         </div>
@@ -283,121 +286,76 @@ export function AppShell() {
 
         {/* Navigation */}
         <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-          {navigation
-            .filter((item) => item.show)
-            .map((item) => {
-              const isActive = isPathActive(item.href);
-              const isExpanded = expandedSections[item.name] ?? isActive;
-              const hasChildren = item.children && item.children.length > 0;
-              const children = item.children?.filter((child) => child.show) ?? [];
-              const groupedChildren = (() => {
-                if (!children.some((child) => child.section)) return null;
-                const groups: Array<{ section: string; items: typeof children }> = [];
-                for (const child of children) {
-                  const label = child.section || "Other";
-                  const group = groups.find((entry) => entry.section === label);
-                  if (group) {
-                    group.items.push(child);
-                  } else {
-                    groups.push({ section: label, items: [child] });
-                  }
-                }
-                return groups;
-              })();
+          {navigation.map((item) => {
+            const isActive = isParentActive(item);
+            const isExpanded = expandedSections[item.name] ?? isActive;
+            const hasChildren = item.children && item.children.length > 0;
 
-              return (
-                <div key={item.name}>
-                  {/* Parent item */}
-                  {hasChildren && sidebarOpen ? (
-                    <button
-                      onClick={() => toggleSection(item.name)}
+            return (
+              <div key={item.name}>
+                {hasChildren && sidebarOpen ? (
+                  <button
+                    onClick={() => toggleSection(item.name)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <item.icon className={cn("h-5 w-5 flex-shrink-0", item.color)} />
+                    <span className="flex-1 text-left">{item.name}</span>
+                    <ChevronRight
                       className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                        isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        "h-4 w-4 transition-transform",
+                        isExpanded && "rotate-90"
                       )}
-                    >
-                      <item.icon className={cn("h-5 w-5 flex-shrink-0", item.color)} />
-                      <span className="flex-1 text-left">{item.name}</span>
-                      <ChevronRight
-                        className={cn(
-                          "h-4 w-4 transition-transform",
-                          isExpanded && "rotate-90"
-                        )}
-                      />
-                    </button>
-                  ) : (
-                    <Link
-                      to={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                        isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                        !sidebarOpen && "justify-center"
-                      )}
-                    >
-                      <item.icon className={cn("h-5 w-5 flex-shrink-0", item.color)} />
-                      {sidebarOpen && <span>{item.name}</span>}
-                    </Link>
-                  )}
+                    />
+                  </button>
+                ) : (
+                  <Link
+                    to={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      !sidebarOpen && "justify-center"
+                    )}
+                  >
+                    <item.icon className={cn("h-5 w-5 flex-shrink-0", item.color)} />
+                    {sidebarOpen && <span>{item.name}</span>}
+                  </Link>
+                )}
 
-                  {/* Child items */}
-                  {hasChildren && sidebarOpen && isExpanded && (
-                    <div className="ml-4 mt-1 space-y-1 border-l border-border pl-3">
-                      {groupedChildren
-                        ? groupedChildren.map((group) => (
-                            <div key={group.section} className="space-y-1">
-                              <div className="px-3 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                {group.section}
-                              </div>
-                              {group.items.map((child) => {
-                                const isChildActive = isPathActive(child.href);
-                                return (
-                                  <Link
-                                    key={child.href}
-                                    to={child.href}
-                                    onClick={() => setMobileMenuOpen(false)}
-                                    className={cn(
-                                      "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors",
-                                      isChildActive
-                                        ? "bg-primary/10 text-primary font-medium"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                    )}
-                                  >
-                                    <child.icon className="h-4 w-4 flex-shrink-0" />
-                                    <span>{child.name}</span>
-                                  </Link>
-                                );
-                              })}
-                            </div>
-                          ))
-                        : children.map((child) => {
-                            const isChildActive = isPathActive(child.href);
-                            return (
-                              <Link
-                                key={child.href}
-                                to={child.href}
-                                onClick={() => setMobileMenuOpen(false)}
-                                className={cn(
-                                  "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors",
-                                  isChildActive
-                                    ? "bg-primary/10 text-primary font-medium"
-                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                )}
-                              >
-                                <child.icon className="h-4 w-4 flex-shrink-0" />
-                                <span>{child.name}</span>
-                              </Link>
-                            );
-                          })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                {/* Child items */}
+                {hasChildren && sidebarOpen && isExpanded && (
+                  <div className="ml-4 mt-1 space-y-1 border-l border-border pl-3">
+                    {item.children!.map((child) => {
+                      const isChildActive = isPathActive(child.href);
+                      return (
+                        <Link
+                          key={child.href}
+                          to={child.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors",
+                            isChildActive
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          )}
+                        >
+                          <child.icon className="h-4 w-4 flex-shrink-0" />
+                          <span>{child.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         {/* Toggle sidebar button (desktop only) */}
@@ -492,8 +450,8 @@ export function AppShell() {
               <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             </Button>
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
+            <Button variant="ghost" size="icon" asChild>
+              <Link to="/notifications"><Bell className="h-5 w-5" /></Link>
             </Button>
           </div>
         </header>
